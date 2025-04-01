@@ -2,7 +2,7 @@ import os
 import tempfile
 import streamlit as st
 from streamlit_chat import message
-from document_loader import ChatPDF
+from Gen_AI.chat_pdf import ChatPDF
 
 # Set the page title for the Streamlit app
 st.set_page_config(page_title="ChatPDF")
