@@ -57,32 +57,40 @@ class ChatPDF:
         )
 
     def ingest(self, pdf_file_path: str):
-        # Load the PDF document
         docs = PyPDFLoader(file_path=pdf_file_path).load()
-        # Split the document into chunks
         chunks = self.text_splitter.split_documents(docs)
-        # Filter complex metadata from chunks
         chunks = filter_complex_metadata(chunks)
 
-        # Initialize the vector store with the document chunks and OpenAI embeddings
-        self.vector_store = FAISS.from_documents(documents=chunks, embedding=OpenAIEmbeddings())
-        # Initialize the retriever with similarity score threshold
-        self.retriever = self.vector_store.as_retriever(
-            search_type="similarity_score_threshold",
-            search_kwargs={
-                "k": 3,
-                "score_threshold": 0.5,
-            },
-        )
+        if self.vector_store is None:
+            # Create the vector store if it doesn't exist yet
+            self.vector_store = FAISS.from_documents(documents=chunks, embedding=OpenAIEmbeddings())
+            self.retriever = self.vector_store.as_retriever(
+                search_type="similarity_score_threshold",
+                search_kwargs={
+                    "k": 3,
+                    "score_threshold": 0.5,
+                },
+            )
 
-        # Create a Conversational Retrieval Chain
-        self.chain = ConversationalRetrievalChain.from_llm(
-            llm=self.model,
-            retriever=self.retriever,
-            memory=self.memory,
-            get_chat_history=lambda h: h,
-            return_source_documents=False,
-        )
+            # Create a Conversational Retrieval Chain
+            self.chain = ConversationalRetrievalChain.from_llm(
+                llm=self.model,
+                retriever=self.retriever,
+                memory=self.memory,
+                get_chat_history=lambda h : h,
+                return_source_documents=False,
+            )
+        else:
+            # Add the new chunks to the existing vector store
+            self.vector_store.add_documents(documents=chunks)
+            self.retriever = self.vector_store.as_retriever(
+                search_type="similarity_score_threshold",
+                search_kwargs={
+                    "k": 3,
+                    "score_threshold": 0.5,
+                },
+            )
+            self.chain.retriever = self.retriever
 
     def ask(self, query: str):
         # Check if the conversational chain is initialized
