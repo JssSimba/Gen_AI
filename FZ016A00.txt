@@ -1,0 +1,2864 @@
+000100 IDENTIFICATION DIVISION.
+000200 PROGRAM-ID.    FZ016A00.
+000300 AUTHOR.        GIBIN.
+000400 DATE-WRITTEN.  02/2016.
+000500 DATE-COMPILED.
+000600*----------------------------------------------------------------*
+000700*  LISTA DADOS DOS ITENS SELECIONADOS NA TELA FZ142A00, PARA
+000710*  VALIDACAO DO FCI CALCULADO
+000800*----------------------------------------------------------------*
+000910*----------------------------------------------------------------*
+000920* US2396273 - TRANSFORMAR PGM NA VERSAO COBOL V6.                *
+000930*             ADRIANA DELLA ROSA MOTTA - COGNIZANT - JULHO/2021  *
+000940*----------------------------------------------------------------*
+000941* US3434324 - CONSISTIR OS DADOS QUE FORAM SOLICITADOS NA TELA   *
+000942*             FZ142A - PGM TELON, E DESPREZAR A SOLICITAùﬁO      *
+000943*             SE A MESMA NﬁO APRESENTAR DADOS V›LIDOS DE         *
+000944*             FCI E DE PRàVIA.                                   *
+000945*----------------------------------------------------------------*
+000946*
+001000*----------------------------------------------------------------*
+001100 ENVIRONMENT DIVISION.
+001200 CONFIGURATION                SECTION.
+001300 SPECIAL-NAMES.
+001400     DECIMAL-POINT IS COMMA.
+001500*----------------------------------------------------------------*
+001600 INPUT-OUTPUT                 SECTION.
+001700 FILE-CONTROL.
+001800*
+003100     SELECT  EB1NFENT    ASSIGN  TO  EB1NFENT                     00310012
+003101             ORGANIZATION IS INDEXED                              00310012
+003102             ACCESS       IS DYNAMIC                              00310012
+003103             RECORD KEY   IS R894A-KEY                            00310012
+003104             FILE STATUS  IS WS-FS-EB1NFENT.                      00310012
+003105                                                                  00290012
+003106     SELECT AS1ESTRU     ASSIGN  TO  AS1ESTRU.
+003107
+003108     SELECT AS2NFENT     ASSIGN  TO  AS2NFENT.
+003109
+003110     SELECT AS3NFSAI     ASSIGN  TO  AS3NFSAI.
+003111*
+003112*----------------------------------------------------------------*
+003113 DATA DIVISION.
+003114*----------------------------------------------------------------*
+003115 FILE                         SECTION.
+003500
+003501*----------------------------------------------------------------*
+003502* ARQUIVO VSAM CONTENDO AS NFS DE ENTRADAS
+003503*----------------------------------------------------------------*
+003900 FD  EB1NFENT.                                                    00390012
+004400                                                                  00440012
+004401 01  EB1NFENT-REG.                                                00430012
+004402     05  R894A-KEY.                                               00430012
+004403         10  R894-REFERENCIA   PIC X(008).                        00430012
+004404         10  R894-CNPJ         PIC X(014).                        00430012
+004405         10  R894-PREFIX-ENG   PIC X(007).                        00430012
+004406         10  R894-BASICO-ENG   PIC X(009).                        00430012
+004407         10  R894-SUFIXO-ENG   PIC X(008).                        00430012
+004408         10  R894-NREF         PIC 9(011)    COMP-3.              00430012
+004409         10  R894-NNF          PIC 9(009)    COMP-3.              00430012
+004410         10  R894-TIMESTAMP    PIC X(026).                        00430012
+004411     05  R894-DADOS            PIC X(517).                        00430012
+004412                                                                  00430012
+004413*----------------------------------------------------------------*
+004414* ARQUIVO LISTAGEM DA FZ302V00
+004415*----------------------------------------------------------------*
+004416
+004417 FD  AS1ESTRU
+004418     LABEL     RECORD     IS  STANDARD
+004419     RECORDING MODE       IS F
+004420     BLOCK     CONTAINS    0 CHARACTERS.
+004421
+004422 01  AS1ESTRU-REG          PIC  X(500).
+004423
+004424*----------------------------------------------------------------*
+004425* ARQUIVO CONTENDO AS NFS DE ENTRADA DOS ITENS SOLICITADOS
+004426*----------------------------------------------------------------*
+004427
+004428 FD  AS2NFENT
+004429     LABEL     RECORD     IS  STANDARD
+004430     RECORDING MODE       IS F
+004431     BLOCK     CONTAINS    0 CHARACTERS.
+004432
+004433 01  AS2NFENT-REG          PIC  X(550).
+004434
+004435*----------------------------------------------------------------*
+004436* ARQUIVO CONTENDO AS NFS DE SAIDA   DOS ITENS SOLICITADOS
+004437*----------------------------------------------------------------*
+004438
+004439 FD  AS3NFSAI
+004440     LABEL     RECORD     IS  STANDARD
+004441     RECORDING MODE       IS F
+004442     BLOCK     CONTAINS    0 CHARACTERS.
+004443
+004444 01  AS3NFSAI-REG          PIC  X(350).
+004445
+004446*----------------------------------------------------------------*
+004447 WORKING-STORAGE              SECTION.
+004448*-----------------------------------*
+004449
+004450* US3434324 - VALIDAR SOLICITAùﬁO ONLINE PARA A ROTINA -------*
+009500 01  WS-SOLIC                    PIC  X(03) VALUE SPACES.
+120600 01  WS303-PARAM-PPREF           PIC  X(04) VALUE SPACES.
+120601 01  WS303-PARAM-PBASI           PIC  X(04) VALUE SPACES.
+120610 01  WS303-PARAM-MODELYR         PIC S9(04) USAGE COMP VALUE 0.
+120611
+120612 01 WAB-G.
+120613     05 WAB-S0CB                 PIC S9(03) COMP-3 VALUE +0.
+120614
+120615*----------------------------------------------------------------*
+120616 01 WCH-G.
+120617     05 WCH-FIM-CSR041           PIC  X(01) VALUE SPACES.
+120618     05 WCH-FIM-CSR302           PIC  X(01) VALUE SPACES.
+120619     05 WCH-FIM-CSR303           PIC  X(01) VALUE SPACES.
+120620     05 WS-FIM-PFAB              PIC  X(01) VALUE SPACES.         00270000
+120621     05 WCH-FIM-FZ894A           PIC  X(01) VALUE SPACES.
+120622
+120623*----------------------------------------------------------------*
+120624 01 WAC-G.
+120625     05 WAC-LID-CSR041           PIC S9(09) COMP-3 VALUE +0.
+120626     05 WAC-DEL-CSR041           PIC S9(09) COMP-3 VALUE +0.
+120627     05 WAC-LID-CSR302           PIC S9(09) COMP-3 VALUE +0.
+120628     05 WAC-LID-CSR303           PIC S9(09) COMP-3 VALUE +0.
+120629     05 WAC-GRV-AS1              PIC S9(09) COMP-3 VALUE +0.
+120630     05 WAC-GRV-AS2              PIC S9(09) COMP-3 VALUE +0.
+120631     05 WAC-GRV-AS3              PIC S9(09) COMP-3 VALUE +0.
+120632     05 WAC-LID-FZ101V           PIC S9(09) COMP-3 VALUE +0.
+120633     05 WAC-LID-FZ301V-FCI       PIC S9(09) COMP-3 VALUE +0.
+120634     05 WAC-LID-FZ301V-PREVIA    PIC S9(09) COMP-3 VALUE +0.
+120635     05 WAC-LID-FZ030V           PIC S9(09) COMP-3 VALUE +0.
+120636     05 WAC-LID-FZ031V           PIC S9(09) COMP-3 VALUE +0.
+120637
+120638 01 WED-G.
+120639     05 WED-LID-CSR041           PIC ZZZ.ZZZ.ZZ9.
+120640     05 WED-DEL-CSR041           PIC ZZZ.ZZZ.ZZ9.
+120641     05 WED-LID-CSR302           PIC ZZZ.ZZZ.ZZ9.
+120642     05 WED-LID-CSR303           PIC ZZZ.ZZZ.ZZ9.
+120643     05 WED-GRV-AS1              PIC ZZZ.ZZZ.ZZ9.
+120644     05 WED-GRV-AS2              PIC ZZZ.ZZZ.ZZ9.
+120645     05 WED-GRV-AS3              PIC ZZZ.ZZZ.ZZ9.
+120646     05 WED-LID-FZ101V           PIC ZZZ.ZZZ.ZZ9.
+120647     05 WED-LID-FZ301V-FCI       PIC ZZZ.ZZZ.ZZ9.
+120648     05 WED-LID-FZ301V-PREVIA    PIC ZZZ.ZZZ.ZZ9.
+120649     05 WED-LID-FZ030V           PIC ZZZ.ZZZ.ZZ9.
+120650     05 WED-LID-FZ031V           PIC ZZZ.ZZZ.ZZ9.
+120651
+120652*----------------------------------------------------------------*
+120653 01 WDIVERSOS.
+120654     05 WAB-PARAGRAFO            PIC  X(052)       VALUE SPACES.
+120655     05 WAB-OBS                  PIC  X(052)       VALUE SPACES.
+120656     05 WAB-SQLCODE              PIC  ----.
+120657     05 WS-COMPLEMENT            PIC X(08)         VALUE SPACES.  00311100
+120658     05 WS-DESCRICAO             PIC X(30)         VALUE SPACES.  00311200
+120659     05 WS-GSDB                  PIC X(05)         VALUE SPACES.  00311200
+120660     05 IX1                      PIC S9(03) COMP-3 VALUE +0.
+120661     05 IX2                      PIC S9(03) COMP-3 VALUE +0.
+120662     05 WS-301VLSAIDAINT-PREV    PIC S9(13)V9(2) COMP-3 VALUE +0.
+120663     05 WS-301VLPARCELA-PREV     PIC S9(13)V9(2) COMP-3 VALUE +0.
+120664     05 WS-301PREVIA-FCI-PREV    PIC S9(03)V9(2) COMP-3 VALUE +0.
+120665     05 WS-ATND-303VLRMED-PRE    PIC S9(13)V9(2) COMP-3 VALUE +0.
+120666     05 WS-ATND-303VLRMEDIO      PIC S9(13)V9(2) COMP-3 VALUE +0.
+120667     05 WS-VLPARC-CALC           PIC S9(13)V9(5) COMP-3 VALUE +0.
+120668     05 WS-CI-CALC               PIC S9(03)V9(2) COMP-3 VALUE +0.
+120669     05 WS-LEGAL-ENT             PIC S9(09)V9(6) COMP-3 VALUE +0.
+120670     05 WS-PART-USAGE            PIC S9(05)V9(5) COMP-3 VALUE +0.
+120671     05 WS-LEGAL-ENT-DT          PIC X(10)         VALUE SPACES.
+120672     05 WS-FROM-CTRY             PIC X(03)         VALUE SPACES.
+120673     05 WS-MODELYR-MERC9         PIC S9(04)  COMP  VALUE +0.      01170000
+120674     05 WS-FS-EB1NFENT           PIC  X(002) VALUE ' '.           00510012
+120675     05 WS-DATE-X                PIC  X(010) VALUE ' '.           00510012
+120676     05 WS-ORIGEM-VLR            PIC  X(005) VALUE ' '.           00510012
+120677     05 WS-ACHOU-NF-COMPON       PIC  X(001) VALUE ' '.           00510012
+120678     05 WS-ACHOU-MES             PIC  X(001) VALUE ' '.           00510012
+120679     05 WS-ACHOU-FZ101V          PIC  X(001) VALUE ' '.           00510012
+120680     05 WS-EXISTE-NFS-SAIDA      PIC  X(001) VALUE ' '.           00510012
+120681
+120682     05 WS-CHAVES.                                                00311200
+120683        10 WS-CNPJ-ANT              PIC X(14)   VALUE SPACES.     00311200
+120684        10 WS-REFERENCIA-ANT        PIC X(10)   VALUE SPACES.     00311200
+120685        10 WS-MERCADORIA-ANT        PIC X(24)   VALUE SPACES.     00311200
+120686        10 WS-CONJUNTO-ATU          PIC X(24)   VALUE SPACES.     00311200
+120687        10 WS-CONJUNTO-ANT          PIC X(24)   VALUE SPACES.     00311200
+120688
+120689     05 WS-NULLS.                                                 00311200
+120690        10 ATDT-030OFFL-COST-NN  PIC S9(04) COMP    VALUE +0.
+120691        10 ATDT-301VALID-HASH-NN PIC S9(04) COMP    VALUE +0.
+120692        10 WS-VLPARC-CALC-NN     PIC S9(04) COMP    VALUE +0.
+120693
+120694     05 WS-MERCADORIA.                                            00311200
+120695        10 WS-TMA-MERC          PIC X(04).                        01170000
+120696        10 FILLER               PIC X(01).                        01170000
+120697        10 WS-PACKAGE-MERC      PIC X(04).                        01170000
+120698        10 FILLER               PIC X(01).                        01170000
+120699        10 WS-MODELYR-MERC      PIC 9(04).                        01170000
+120700        10 FILLER               PIC X(01).                        01170000
+120701        10 WS-EPAINTCODE        PIC X(03).                        01170000
+120702        10 FILLER               PIC X(01).                        01170000
+120703        10 WS-IPAINTCODE        PIC X(02).                        01170000
+120704        10 FILLER               PIC X(03).                        01170000
+120705
+120706 01  WS-DATA-REF                 PIC X(10).                       01010000
+120707 01  WS-MES-REF                  PIC S9(02)  COMP.
+120708 01  WS-ANO-REF                  PIC S9(04)  COMP.
+120709*                                                                 01080000
+120710 01  WS-QUOCIENTE            PIC  9(03)  VALUE  ZEROS.
+120711 01  WS-RESTO                PIC  9(03)  VALUE  ZEROS.
+120712 01  WS-DTA-INI              PIC  X(10)         VALUE SPACES.
+120713
+120714 01  WS-CLAFISC              PIC X(10).                           01010000
+120715 01  WS-CLAFISC-R   REDEFINES  WS-CLAFISC.
+120716     10 WS-CLAFISCOD         PIC 9(08).
+120717     10 FILLER               PIC X(02).
+120718                                                                  01080000
+120719 01  WS-DTA-FIM              PIC  X(10).
+120720 01  WS-DTA-FIM-R REDEFINES WS-DTA-FIM.
+120721     10 WS-DIA-FIM           PIC  9(002).
+120722     10 FILLER               PIC  X(001).
+120723     10 WS-MES-FIM           PIC  9(002).
+120724     10 FILLER               PIC  X(001).
+120725     10 WS-ANO-FIM           PIC  9(004).
+120726
+120727 01  WS-DATA-HOJE            PIC  X(010).
+120728 01  WS-DATA-HOJE-R REDEFINES WS-DATA-HOJE.
+120729     10 WS-DIA-HOJE          PIC  X(002).
+120730     10 FILLER               PIC  X(001).
+120731     10 WS-MES-HOJE          PIC  X(002).
+120732     10 FILLER               PIC  X(001).
+120733     10 WS-ANO-HOJE          PIC  X(004).
+120734
+120735 01  WS-TABELA-CNPJ-GSDB       VALUE  SPACES.                     01090000
+120736     05 WS-TAB-CNPJ-GSDB  OCCURS  50   TIMES.                     01090000
+120737        10 WS-PFAB-GSDB         PIC X(05).                        01170000
+120738        10 WS-PFAB-CNPJ         PIC X(14).                        01170000
+120739
+120740*----------------------------------------------------------------*
+120741 01  WPARAM-G.
+120742     05 WPARAM-DATA-DB2          PIC  X(010).
+120743     05 WPARAM-HORA-DB2          PIC  X(008).
+120744
+120745     05  WS-PARAM-AUX-G.
+120746         10  WS-PARAM-PDATA  PIC  X(010).
+120747         10  WS-PARAM-PCNPJ  PIC  X(014).
+120748         10  WS-PARAM-PPECA  PIC  X(024).
+120749         10  WS-PARAM-PCJTO.
+120750             15  WS-PARAM-PPREF  PIC  X(007).
+120751             15  WS-PARAM-PBASI  PIC  X(009).
+120752             15  WS-PARAM-PSUFI  PIC  X(008).
+120753         10  WS-PARAM-PITEM  REDEFINES  WS-PARAM-PCJTO
+120754                                 PIC  X(024).
+120755         10  WS-PARAM-PNREF  PIC  9(009).
+120756         10  WS-PARAM-PXML   PIC  X(044).
+120757         10  WS-PARAM-PTIPO  PIC  X(002).
+120758         10  WS-PARAM-FILLER PIC  X(128).
+120759     05  WS-PARAM-AUX  REDEFINES  WS-PARAM-AUX-G
+120760                             PIC  X(255).
+120761
+120762 01  WS-DADOS-AUX.
+120763     05  WS-AUX-PPECA            PIC  X(024).
+120764     05  FILLER  REDEFINES  WS-AUX-PPECA.
+120765         07  FILLER              PIC  X(001).
+120766         07  WS-PECA-01          PIC  X(005).
+120767         07  WS-PECA-02          PIC  X(005).
+120768         07  WS-PECA-03          PIC  X(004).
+120769         07  FILLER              PIC  X(009).
+120770     05  WS-CHAR4                PIC  X(04) VALUE SPACES.
+120771     05  FILLER   REDEFINES  WS-CHAR4.
+120772         07  WS-NUM4             PIC  9(04).
+120773     05  WS-PCNPJ                PIC  X(014).
+120774     05  WS-PCNPJ-INI            PIC  X(014).
+120775     05  WS-PCNPJ-FIM            PIC  X(014).
+120776     05  WS-PXML                 PIC  X(044).
+120777     05  WS-PXML-INI             PIC  X(044).
+120778     05  WS-PXML-FIM             PIC  X(044).
+120779     05  WS-PNREF                PIC S9(009)  COMP.
+120780     05  WS-PNREF-INI            PIC S9(009)  COMP.
+120781     05  WS-PNREF-FIM            PIC S9(009)  COMP.
+120782
+120783 01  WS-R894A-KEY.                                                00430012
+120784     05  WS-R894-REFERENCIA      PIC X(008).                      00430012
+120785     05  WS-R894-CNPJ            PIC X(014).                      00430012
+120786     05  WS-R894-PREFIX-ENG      PIC X(007).                      00430012
+120787     05  WS-R894-BASICO-ENG      PIC X(009).                      00430012
+120788     05  WS-R894-SUFIXO-ENG      PIC X(008).                      00430012
+120789     05  WS-R894-NREF            PIC 9(011)    COMP-3.            00430012
+120790     05  WS-R894-NNF             PIC 9(009)    COMP-3.            00430012
+120791     05  WS-R894-TIMESTAMP       PIC X(026).                      00430012
+120792*                                                                 02230012
+120793*
+120794*----------------------------------------------------------------*
+120795* LAYOUT DO ARQUIVO AS1ESTRU
+120796*----------------------------------------------------------------*
+120797  01 WAS1C1-G.
+120798     05 FILLER                   PIC  X(055) VALUE
+120799        'FZ016A -                 FCI - ESTRUTURA DE CATALOGO'.
+120800     05 FILLER                   PIC  X(012) VALUE
+120801        'DATA PROC : '.
+120802     05 WAS1C1-DTPROC            PIC  X(010).
+120803     05 FILLER                   PIC  X(003) VALUE ' * '.
+120804     05 FILLER                   PIC  X(012) VALUE
+120805        'HORA PROC : '.
+120806     05 WAS1C1-HRPROC            PIC  X(008).
+120807     05 FILLER                   PIC  X(130) VALUE ' '.
+120808
+120809  01 WAS1C2-G.
+120810     05 WAS1C2-REFER-CATAL   PIC  X(10) VALUE 'DT REF.CAT'.
+120811     05 FILLER               PIC  X(01) VALUE '#'.
+120812     05 WAS1C2-CNPJ          PIC  X(14) VALUE 'CNPJ          '.
+120813     05 FILLER               PIC  X(01) VALUE '#'.
+120814     05 WAS1C2-MERCADORIA    PIC  X(24) VALUE 'CATALOGO         '.
+120815     05 FILLER               PIC  X(01) VALUE '#'.
+120816     05 WAS1C2-VLSAIDA-OFIC  PIC  X(20) VALUE
+120817                                        'VL MEDIO CAT OFICIAL'.
+120818     05 FILLER               PIC  X(01) VALUE '#'.
+120819     05 WAS1C2-VLPARC-OFIC   PIC  X(20) VALUE
+120820                                        'PARC.IMP.CAT OFICIAL'.
+120821     05 FILLER               PIC  X(01) VALUE '#'.
+120822     05 WAS1C2-CI-OFIC       PIC  X(12) VALUE '%FCI OFICIAL'.
+120823     05 FILLER               PIC  X(01) VALUE '#'.
+120824     05 WAS1C2-STATUS        PIC  X(06) VALUE 'STATUS'.
+120825     05 FILLER               PIC  X(01) VALUE '#'.
+120826     05 WAS1C2-REFER-CALC    PIC  X(10) VALUE 'DTREF.CALC'.
+120827     05 FILLER               PIC  X(01) VALUE '#'.
+120828     05 WAS1C2-VLSAIDA-CALC  PIC  X(20) VALUE
+120829                                        'VL MEDIO CAT CALC  '.
+120830     05 FILLER               PIC  X(01) VALUE '#'.
+120831     05 WAS1C2-VLPARC-CALC   PIC  X(20) VALUE
+120832                                        'PARC.IMP.CAT CALC '.
+120833     05 FILLER               PIC  X(01) VALUE '#'.
+120834     05 WAS1C2-CI-CALC       PIC  X(12) VALUE '% FCI CALC '.
+120835     05 FILLER               PIC  X(01) VALUE '#'.
+120836     05 WAS1C2-ORIGEM-VLR    PIC  X(15) VALUE 'ORIGEM VL MEDIO'.
+120837     05 FILLER               PIC  X(01) VALUE '#'.
+120838     05 WAS1C2-NCM           PIC  X(10) VALUE 'NCM CAT'.
+120839     05 FILLER               PIC  X(01) VALUE '#'.
+120840     05 WAS1C2-MERC-DESCR    PIC  X(30) VALUE
+120841                                        'DESCRICAO CATALOGO'.
+120842     05 FILLER               PIC  X(01) VALUE '#'.
+120843     05 WAS1C2-PREVIA-VLRMED PIC  X(20) VALUE 'PREVIA VLR MEDIO'.
+120844     05 FILLER               PIC  X(01) VALUE '#'.
+120845     05 WAS1C2-PREVIA-PARIMP PIC  X(20) VALUE 'PREVIA PARC.IMP.'.
+120846     05 FILLER               PIC  X(01) VALUE '#'.
+120847     05 WAS1C2-PREVIA-FCI    PIC  X(10) VALUE '%PREV. FCI'.
+120848     05 FILLER               PIC  X(01) VALUE '#'.
+120849     05 WAS1C2-DATA-PREVIA   PIC  X(10) VALUE 'DTA PREVIA'.
+120850     05 FILLER               PIC  X(01) VALUE '#'.
+120851     05 WAS1C2-COMPO-PREF    PIC  X(13) VALUE 'COMPO PREFIXO'.
+120852     05 FILLER               PIC  X(01) VALUE '#'.
+120853     05 WAS1C2-COMPO-BASI    PIC  X(15) VALUE 'COMPO BASICO   '.
+120854     05 FILLER               PIC  X(01) VALUE '#'.
+120855     05 WAS1C2-COMPO-SUFI    PIC  X(14) VALUE 'COMPO SUFIXO  '.
+120856     05 FILLER               PIC  X(01) VALUE '#'.
+120857     05 WAS1C2-SEQ-NUM       PIC  X(05) VALUE 'SEQUE'.
+120858     05 FILLER               PIC  X(01) VALUE '#'.
+120859     05 WAS1C2-VLR-PARIMP    PIC  X(20) VALUE
+120860                                        'PARC.IMP.COMPO TOTAL'.
+120861     05 FILLER               PIC  X(01) VALUE '#'.
+120862     05 WAS1C2-LEGAL-ENT     PIC  X(20) VALUE 'LEGAL ENT COMPO'.
+120863     05 FILLER               PIC  X(01) VALUE '#'.
+120864     05 WAS1C2-LEGAL-ENT-DT  PIC  X(10) VALUE 'DT LEG-ENT'.
+120865     05 FILLER               PIC  X(01) VALUE '#'.
+120866     05 WAS1C2-PART-USAGE    PIC  X(12) VALUE 'QTDE USADA'.
+120867     05 FILLER               PIC  X(01) VALUE '#'.
+120868     05 WAS1C2-FROM-CTRY     PIC  X(04) VALUE 'CTRY'.
+120869     05 FILLER               PIC  X(01) VALUE '#'.
+120870     05 WAS1C2-VLR-IMP       PIC  X(20) VALUE
+120871                                        'PARC.IMP.COMPO UNIT.'.
+120872     05 FILLER               PIC  X(01) VALUE '#'.
+120873     05 WAS1C2-REFER-COMP    PIC  X(10) VALUE 'DTREF COMP'.
+120874     05 FILLER               PIC  X(01) VALUE '#'.
+120875     05 WAS1C2-NCM-COMP      PIC  X(10) VALUE 'NCM COMPO'.
+120876     05 FILLER               PIC  X(01) VALUE '#'.
+120877     05 WAS1C2-UNIDPECA      PIC  X(08) VALUE 'UM COMPO'.
+120878     05 FILLER               PIC  X(01) VALUE '#'.
+120879     05 WAS1C2-PERC-IMP      PIC  X(13) VALUE 'PERC.IMP.COMP'.
+120880     05 FILLER               PIC  X(01) VALUE '#'.
+120881     05 WAS1C2-NUM-REF       PIC  X(07) VALUE 'NUM REF'.
+120882     05 FILLER               PIC  X(01) VALUE '#'.
+120883
+120884  01 WAS1D-G.
+120885     05 WAS1D-REFER-CATAL    PIC  X(10).
+120886     05 FILLER               PIC  X(01) VALUE '#'.
+120887     05 WAS1D-CNPJ           PIC  X(14).
+120888     05 FILLER               PIC  X(01) VALUE '#'.
+120889     05 WAS1D-MERCADORIA     PIC  X(24).
+120890     05 FILLER               PIC  X(01) VALUE '#'.
+120891     05 WAS1D-VLSAIDA-OFIC   PIC  -.---.---.---.--9,99.
+120892     05 FILLER               PIC  X(01) VALUE '#'.
+120893     05 WAS1D-VLPARC-OFIC    PIC  -.---.---.---.--9,99.
+120894     05 FILLER               PIC  X(01) VALUE '#'.
+120895     05 FILLER               PIC  X(03) VALUE ' '.
+120896     05 WAS1D-CI-OFIC        PIC  --9,99B(03).
+120897     05 FILLER               PIC  X(01) VALUE '#'.
+120898     05 WAS1D-STATUS         PIC  X(06).
+120899     05 FILLER               PIC  X(01) VALUE '#'.
+120900     05 WAS1D-REFER-CALC     PIC  X(10).
+120901     05 FILLER               PIC  X(01) VALUE '#'.
+120902     05 WAS1D-VLSAIDA-CALC   PIC  -.---.---.---.--9,99.
+120903     05 FILLER               PIC  X(01) VALUE '#'.
+120904     05 WAS1D-VLPARC-CALC    PIC  -.---.---.---.--9,99.
+120905     05 FILLER               PIC  X(01) VALUE '#'.
+120906     05 FILLER               PIC  X(03) VALUE ' '.
+120907     05 WAS1D-CI-CALC        PIC  --9,99B(03).
+120908     05 FILLER               PIC  X(01) VALUE '#'.
+120909     05 WAS1D-ORIGEM-VLR     PIC  X(15).
+120910     05 FILLER               PIC  X(01) VALUE '#'.
+120911     05 WAS1D-NCM            PIC  X(10).
+120912     05 FILLER               PIC  X(01) VALUE '#'.
+120913     05 WAS1D-MERC-DESCR     PIC  X(30).
+120914     05 FILLER               PIC  X(01) VALUE '#'.
+120915     05 WAS1D-PREVIA-VLRMED  PIC  -.---.---.---.--9,99.
+120916     05 FILLER               PIC  X(01) VALUE '#'.
+120917     05 WAS1D-PREVIA-PARIMP  PIC  -.---.---.---.--9,99.
+120918     05 FILLER               PIC  X(01) VALUE '#'.
+120919     05 FILLER               PIC  X(02) VALUE ' '.
+120920     05 WAS1D-PREVIA-FCI     PIC  --9,99B(02).
+120921     05 FILLER               PIC  X(01) VALUE '#'.
+120922     05 WAS1D-DATA-PREVIA    PIC  X(10).
+120923     05 FILLER               PIC  X(01) VALUE '#'.
+120924     05 WAS1D-COMPO-PREF     PIC  X(07)B(06).
+120925     05 FILLER               PIC  X(01) VALUE '#'.
+120926     05 WAS1D-COMPO-BASI     PIC  X(09)B(06).
+120927     05 FILLER               PIC  X(01) VALUE '#'.
+120928     05 WAS1D-COMPO-SUFI     PIC  X(08)B(06).
+120929     05 FILLER               PIC  X(01) VALUE '#'.
+120930     05 WAS1D-SEQ-NUM        PIC  ZZZZ9.
+120931     05 FILLER               PIC  X(01) VALUE '#'.
+120932     05 WAS1D-VLR-PARIMP     PIC  -.---.---.---.--9,99.
+120933     05 FILLER               PIC  X(01) VALUE '#'.
+120934     05 WAS1D-LEGAL-ENT      PIC  -.---.---.---.--9,99.
+120935     05 FILLER               PIC  X(01) VALUE '#'.
+120936     05 WAS1D-LEGAL-ENT-DT   PIC  X(10).
+120937     05 FILLER               PIC  X(01) VALUE '#'.
+120938     05 WAS1D-PART-USAGE     PIC  --.--9,99999.
+120939     05 FILLER               PIC  X(01) VALUE '#'.
+120940     05 WAS1D-FROM-CTRY      PIC  X(04).
+120941     05 FILLER               PIC  X(01) VALUE '#'.
+120942     05 WAS1D-VLR-IMP        PIC  -.---.---.---.--9,99.
+120943     05 FILLER               PIC  X(01) VALUE '#'.
+120944     05 WAS1D-REFER-COMP     PIC  X(10).
+120945     05 FILLER               PIC  X(01) VALUE '#'.
+120946     05 WAS1D-NCM-COMP       PIC  X(10).
+120947     05 FILLER               PIC  X(01) VALUE '#'.
+120948     05 FILLER               PIC  X(03) VALUE ' '.
+120949     05 WAS1D-UNIDPECA       PIC  X(02).
+120950     05 FILLER               PIC  X(03) VALUE ' '.
+120951     05 FILLER               PIC  X(01) VALUE '#'.
+120952     05 FILLER               PIC  X(04) VALUE ' '.
+120953     05 WAS1D-PERC-IMP       PIC  --9,99B(03).
+120954     05 FILLER               PIC  X(01) VALUE '#'.
+120955     05 WAS1D-NUM-REF        PIC  ZZZZZZ9.
+120956     05 FILLER               PIC  X(01) VALUE '#'.
+120957
+120958*----------------------------------------------------------------*
+120959
+120960*----------------------------------------------------------------*00010012
+120961* LAY-OUT  DO CABECALHO E DADOS DAS NFS DE ENTRADA               *
+120962*----------------------------------------------------------------*00010012
+120963
+120964  01 WAS2C1-G.
+120965     05 FILLER                   PIC  X(074) VALUE
+120966        'FZ016B -                FCI - ENTRADAS (NOTAS FISCAIS) '.
+120967     05 FILLER                   PIC  X(012) VALUE
+120968        'DATA PROC : '.
+120969     05 WAS2C1-DTPROC            PIC  X(010).
+120970     05 FILLER                   PIC  X(003) VALUE ' * '.
+120971     05 FILLER                   PIC  X(012) VALUE
+120972        'HORA PROC : '.
+120973     05 WAS2C1-HRPROC            PIC  X(008).
+120974     05 FILLER                   PIC  X(131) VALUE ' '.
+120975
+120976 01  WAS2C2-G.
+120977     05  FILLER                 PIC X(10) VALUE 'DTA REFER.'.
+120978     05  FILLER                 PIC X(01) VALUE '#'.
+120979     05  FILLER                 PIC X(14) VALUE 'CNPJ          '.
+120980     05  FILLER                 PIC X(01) VALUE '#'.
+120981     05  FILLER                 PIC X(24) VALUE 'CATALOGO      '.
+120982     05  FILLER                 PIC X(01) VALUE '#'.
+120983     05  FILLER                 PIC X(10) VALUE 'REFER.NFIS'.
+120984     05  FILLER                 PIC X(01) VALUE '#'.
+120985     05  FILLER                 PIC X(15) VALUE 'NUM. REF. PECA'.
+120986     05  FILLER                 PIC X(01) VALUE  '#'.
+120987     05  FILLER                 PIC X(14) VALUE 'CNPJ PLTA FORD'.
+120988     05  FILLER                 PIC X(01) VALUE  '#'.
+120989     05  FILLER                 PIC X(14) VALUE 'CNPJ FORNEC. '.
+120990     05  FILLER                 PIC X(01) VALUE  '#'.
+120991     05  FILLER                 PIC X(09) VALUE ' NUM. NF '.
+120992     05  FILLER                 PIC X(01) VALUE  '#'.
+120993     05  FILLER                 PIC X(03) VALUE 'SER'.
+120994     05  FILLER                 PIC X(01) VALUE  '#'.
+120995     05  FILLER                 PIC X(02) VALUE 'TP'.
+120996     05  FILLER                 PIC X(01) VALUE  '#'.
+120997     05  FILLER                 PIC X(09) VALUE 'NF ORIG.'.
+120998     05  FILLER                 PIC X(01) VALUE  '#'.
+120999     05  FILLER                 PIC X(10) VALUE 'DT EMIS NF'.
+121000     05  FILLER                 PIC X(01) VALUE  '#'.
+121001     05  FILLER                 PIC X(10) VALUE 'DT MOVT NF'.
+121002     05  FILLER                 PIC X(01) VALUE  '#'.
+121003     05  FILLER                 PIC X(07) VALUE 'PREFIXO'.
+121004     05  FILLER                 PIC X(01) VALUE  '#'.
+121005     05  FILLER                 PIC X(09) VALUE '  BASICO '.
+121006     05  FILLER                 PIC X(01) VALUE  '#'.
+121007     05  FILLER                 PIC X(08) VALUE ' SUFIXO '.
+121008     05  FILLER                 PIC X(01) VALUE  '#'.
+121009     05  FILLER                 PIC X(10) VALUE 'CLAS.FISC.'.
+121010     05  FILLER                 PIC X(01) VALUE  '#'.
+121011     05  FILLER                 PIC X(03) VALUE 'CST'.
+121012     05  FILLER                 PIC X(01) VALUE  '#'.
+121013     05  FILLER                 PIC X(15) VALUE '     QTDE PECA '.
+121014     05  FILLER                 PIC X(01) VALUE  '#'.
+121015     05  FILLER                 PIC X(02) VALUE 'UM'.
+121016     05  FILLER                 PIC X(01) VALUE  '#'.
+121017     05  FILLER                 PIC X(08) VALUE  ' '.
+121018     05  FILLER                 PIC X(13) VALUE 'VLR UNITARIO '.
+121019     05  FILLER                 PIC X(01) VALUE  '#'.
+121020     05  FILLER                 PIC X(12) VALUE  ' '.
+121021     05  FILLER                 PIC X(09) VALUE 'VLR ITEM '.
+121022     05  FILLER                 PIC X(01) VALUE  '#'.
+121023     05  FILLER                 PIC X(12) VALUE  ' '.
+121024     05  FILLER                 PIC X(09) VALUE 'VLR ICMS '.
+121025     05  FILLER                 PIC X(01) VALUE  '#'.
+121026     05  FILLER                 PIC X(13) VALUE  ' '.
+121027     05  FILLER                 PIC X(08) VALUE 'VLR IPI '.
+121028     05  FILLER                 PIC X(01) VALUE  '#'.
+121029     05  FILLER                 PIC X(09) VALUE  ' '.
+121030     05  FILLER                 PIC X(12) VALUE 'VLR TOTITEM '.
+121031     05  FILLER                 PIC X(01) VALUE  '#'.
+121032     05  FILLER                 PIC X(08) VALUE  ' '.
+121033     05  FILLER                 PIC X(13) VALUE 'VLR FOB UVLR '.
+121034     05  FILLER                 PIC X(01) VALUE  '#'.
+121035     05  FILLER                 PIC X(09) VALUE  ' '.
+121036     05  FILLER                 PIC X(12) VALUE 'SEGURO PECA '.
+121037     05  FILLER                 PIC X(01) VALUE  '#'.
+121038     05  FILLER                 PIC X(10) VALUE  ' '.
+121039     05  FILLER                 PIC X(11) VALUE 'FRETE PECA '.
+121040     05  FILLER                 PIC X(01) VALUE  '#'.
+121041     05  FILLER                 PIC X(10) VALUE ' PROCESSO '.
+121042     05  FILLER                 PIC X(01) VALUE  '#'.
+121043     05  FILLER                 PIC X(10) VALUE ' NUM. DI  '.
+121044     05  FILLER                 PIC X(01) VALUE  '#'.
+121045     05  FILLER                 PIC X(10) VALUE ' DATA DI  '.
+121046     05  FILLER                 PIC X(01) VALUE  '#'.
+121047     05  FILLER                 PIC X(05) VALUE 'ORIG '.
+121048     05  FILLER                 PIC X(01) VALUE  '#'.
+121049     05  FILLER                 PIC X(10) VALUE  ' '.
+121050     05  FILLER                 PIC X(11) VALUE 'VLR NF FCI '.
+121051     05  FILLER                 PIC X(01) VALUE  '#'.
+121052     05  FILLER                 PIC X(08) VALUE ' '.
+121053     05  FILLER                 PIC X(13) VALUE 'VLR PARC IMP '.
+121054     05  FILLER                 PIC X(01) VALUE  '#'.
+121055     05  FILLER                 PIC X(03) VALUE ' % '.
+121056     05  FILLER                 PIC X(01) VALUE  '#'.
+121057     05  FILLER                 PIC X(01) VALUE 'C'.
+121058     05  FILLER                 PIC X(01) VALUE  '#'.
+121059     05  FILLER                 PIC X(04) VALUE 'CFOP'.
+121060     05  FILLER                 PIC X(01) VALUE  '#'.
+121061     05  FILLER                 PIC X(02) VALUE 'UF'.
+121062     05  FILLER                 PIC X(01) VALUE  '#'.
+121063     05  FILLER                 PIC X(24) VALUE '    PECA ORIGEM'.
+121064     05  FILLER                 PIC X(01) VALUE  '#'.
+121065     05  FILLER                 PIC X(15) VALUE '    QTDE IMPEX '.
+121066     05  FILLER                 PIC X(01) VALUE  '#'.
+121067*
+121068 01  WAS2D-G.
+121069   03  WAS2D-REFERENCIA         PIC  X(10).
+121070   03  FILLER                   PIC  X(01) VALUE '#'.
+121071   03  WAS2D-CNPJ               PIC  X(14).
+121072   03  FILLER                   PIC  X(01) VALUE '#'.
+121073   03  WAS2D-MERCADORIA         PIC  X(24).
+121074   03  FILLER                   PIC  X(01) VALUE '#'.
+121075   03  WAS2D-REFER-NF           PIC  X(10).
+121076   03  FILLER                   PIC  X(01) VALUE '#'.
+121077   03  WAS2D-GERAL.
+121078     05  WAS2D-NUM-REF          PIC  9(15).
+121079     05  FILLER                 PIC  X(01).
+121080     05  WAS2D-CNPJ-PLTA        PIC  X(14).
+121081     05  FILLER                 PIC  X(01).
+121082     05  WAS2D-CNPJ-FORN        PIC  X(14).
+121083     05  FILLER                 PIC  X(01).
+121084     05  WAS2D-NUM-NF           PIC  9(09).
+121085     05  FILLER                 PIC  X(01).
+121086     05  WAS2D-SER-NF           PIC  X(03).
+121087     05  FILLER                 PIC  X(01).
+121088     05  WAS2D-TIPO-NF          PIC  X(02).
+121089     05  FILLER                 PIC  X(01).
+121090     05  WAS2D-NUM-NF-ORIG      PIC  9(09).
+121091     05  FILLER                 PIC  X(01).
+121092     05  WAS2D-DT-EMISS-NF      PIC  X(10).
+121093     05  FILLER                 PIC  X(01).
+121094     05  WAS2D-DT-MOVTO-NF      PIC  X(10).
+121095     05  FILLER                 PIC  X(01).
+121096     05  WAS2D-PREFIXO          PIC  X(07).
+121097     05  FILLER                 PIC  X(01).
+121098     05  WAS2D-BASICO           PIC  X(09).
+121099     05  FILLER                 PIC  X(01).
+121100     05  WAS2D-SUFIXO           PIC  X(08).
+121101     05  FILLER                 PIC  X(01).
+121102     05  WAS2D-NCM              PIC  X(10).
+121103     05  FILLER                 PIC  X(01).
+121104     05  WAS2D-CST              PIC  X(03).
+121105     05  WAS2D-CST-R REDEFINES WAS2D-CST.
+121106         10  WAS2D-ORIG-MERC    PIC  X(01).
+121107         10  WAS2D-EX-TARIF     PIC  X(02).
+121108     05  FILLER                 PIC  X(01).
+121109     05  WAS2D-QTDE-PECA        PIC  X(15).
+121110     05  FILLER                 PIC  X(01).
+121111     05  WAS2D-UNID-MED         PIC  X(02).
+121112     05  FILLER                 PIC  X(01).
+121113     05  WAS2D-UNIT-VLR         PIC  X(21).
+121114     05  FILLER                 PIC  X(01).
+121115     05  WAS2D-ITEM-VLR         PIC  X(21).
+121116     05  FILLER                 PIC  X(01).
+121117     05  WAS2D-ICMS-VLR         PIC  X(21).
+121118     05  FILLER                 PIC  X(01).
+121119     05  WAS2D-IPI-VLR          PIC  X(21).
+121120     05  FILLER                 PIC  X(01).
+121121     05  WAS2D-TOTITEM-VLR      PIC  X(21).
+121122     05  FILLER                 PIC  X(01).
+121123     05  WAS2D-FOB-UVLR         PIC  X(21).
+121124     05  FILLER                 PIC  X(01).
+121125     05  WAS2D-SEG-PECA         PIC  X(21).
+121126     05  FILLER                 PIC  X(01).
+121127     05  WAS2D-FRETE-PECA       PIC  X(21).
+121128     05  FILLER                 PIC  X(01).
+121129     05  WAS2D-PROCESSO         PIC  X(10).
+121130     05  FILLER                 PIC  X(01).
+121131     05  WAS2D-DI               PIC  X(10).
+121132     05  FILLER                 PIC  X(01).
+121133     05  WAS2D-DI-DT            PIC  X(10).
+121134     05  FILLER                 PIC  X(01).
+121135     05  WAS2D-ORIG-ARQ         PIC  X(05).
+121136     05  FILLER                 PIC  X(01).
+121137     05  WAS2D-NFFCI-VLR        PIC  X(21).
+121138     05  FILLER                 PIC  X(01).
+121139     05  WAS2D-PARC-IMP-VLR     PIC  X(21).
+121140     05  FILLER                 PIC  X(01).
+121141     05  WAS2D-PERCENT-CST      PIC  9(03).
+121142     05  FILLER                 PIC  X(01).
+121143     05  WAS2D-CAMEX            PIC  X(01).
+121144     05  FILLER                 PIC  X(01).
+121145     05  WAS2D-CFOP             PIC  X(04).
+121146     05  FILLER                 PIC  X(01).
+121147     05  WAS2D-UF-FORN          PIC  X(02).
+121148     05  FILLER                 PIC  X(01).
+121149     05  WAS2D-PECA-ORIG        PIC  X(24).
+121150     05  FILLER                 PIC  X(01).
+121151     05  WAS2D-QTDE-IMPEX       PIC  X(15).
+121152     05  FILLER                 PIC  X(01).
+121153*
+121154*
+121155 01  WAS2D2-G.
+121156     05  WAS2D2-REFERENCIA      PIC  X(10).
+121157     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121158     05  WAS2D2-CNPJ            PIC  X(14).
+121159     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121160     05  WAS2D2-MERCADORIA      PIC  X(24).
+121161     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121162     05  WAS2D2-REFER-NF        PIC  X(10).
+121163     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121164     05  WAS2D2-NUM-REFX.
+121165         07  WAS2D2-NUM-REF     PIC  9(15).
+121166     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121167     05  WAS2D2-CNPJ-PLTA       PIC  X(14).
+121168     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121169     05  FILLER                 PIC  X(14)   VALUE  ' '.
+121170     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121171     05  FILLER                 PIC  X(09)   VALUE  ' '.
+121172     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121173     05  FILLER                 PIC  X(03)   VALUE  ' '.
+121174     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121175     05  FILLER                 PIC  X(02)   VALUE  ' '.
+121176     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121177     05  FILLER                 PIC  X(09)   VALUE  ' '.
+121178     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121179     05  FILLER                 PIC  X(10)   VALUE  ' '.
+121180     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121181     05  FILLER                 PIC  X(10)   VALUE  ' '.
+121182     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121183     05  WAS2D2-PREFIXO         PIC  X(07).
+121184     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121185     05  WAS2D2-BASICO          PIC  X(09).
+121186     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121187     05  WAS2D2-SUFIXO          PIC  X(08).
+121188     05  FILLER                 PIC  X(01)   VALUE  '#'.
+121189     05  WAS2D2-OBSERVACAO      PIC  X(50).
+121190*
+121191*----------------------------------------------------------------*00010012
+121192* LAY-OUT  DO CABECALHO E DADOS DAS NFS DE SAIDA DO CATALOGO     *
+121193*----------------------------------------------------------------*00010012
+121194
+121195  01 WAS3C1-G.
+121196     05 FILLER                   PIC  X(074) VALUE
+121197        'FZ016C -                FCI - SAIDAS   (NOTAS FISCAIS) '.
+121198     05 FILLER                   PIC  X(012) VALUE
+121199        'DATA PROC : '.
+121200     05 WAS3C1-DTPROC            PIC  X(010).
+121201     05 FILLER                   PIC  X(003) VALUE ' * '.
+121202     05 FILLER                   PIC  X(012) VALUE
+121203        'HORA PROC : '.
+121204     05 WAS3C1-HRPROC            PIC  X(008).
+121205     05 FILLER                   PIC  X(131) VALUE ' '.
+121206
+121207
+121208  01 WAS3C2-G.
+121209     05 WAS3C2-REFERENCIA    PIC  X(10) VALUE 'DTA REFER.'.
+121210     05 FILLER               PIC  X(01) VALUE '#'.
+121211     05 WAS3C2-CNPJ          PIC  X(14) VALUE 'CNPJ          '.
+121212     05 FILLER               PIC  X(01) VALUE '#'.
+121213     05 WAS3C2-MERCADORIA    PIC  X(24) VALUE 'CATALOGO         '.
+121214     05 FILLER               PIC  X(01) VALUE '#'.
+121215     05 WAS3C2-INVOICENO     PIC  X(09) VALUE 'NFISCAL  '.
+121216     05 FILLER               PIC  X(01) VALUE '#'.
+121217     05 WAS3C2-SERIE         PIC  X(05) VALUE 'SERIE'.
+121218     05 FILLER               PIC  X(01) VALUE '#'.
+121219     05 WAS3C2-VIN           PIC  X(17) VALUE 'VIN'.
+121220     05 FILLER               PIC  X(01) VALUE '#'.
+121221     05 WAS3C2-CLAFISCODE    PIC  X(11) VALUE 'CLAS.FISCAL'.
+121222     05 FILLER               PIC  X(01) VALUE '#'.
+121223     05 WAS3C2-MKTDESCR      PIC  X(40) VALUE 'DESCRICAO'.
+121224     05 FILLER               PIC  X(01) VALUE '#'.
+121225     05 WAS3C2-SALESMODAL    PIC  X(10) VALUE 'SALESMODAL'.
+121226     05 FILLER               PIC  X(01) VALUE '#'.
+121227     05 WAS3C2-STATECODE     PIC  X(06) VALUE 'ESTADO'.
+121228     05 FILLER               PIC  X(01) VALUE '#'.
+121229     05 WAS3C2-INVOILOCAL    PIC  X(10) VALUE 'INVOILOCAL'.
+121230     05 FILLER               PIC  X(01) VALUE '#'.
+121231     05 WAS3C2-BUILDLOCAL    PIC  X(10) VALUE 'BUILDLOCAL'.
+121232     05 FILLER               PIC  X(01) VALUE '#'.
+121233     05 WAS3C2-ISSUEDT       PIC  X(10) VALUE 'DATA NF   '.
+121234     05 FILLER               PIC  X(01) VALUE '#'.
+121235     05 WAS3C2-INVOICEVAL    PIC  X(20) VALUE 'VLR NF        '.
+121236     05 FILLER               PIC  X(01) VALUE '#'.
+121237     05 WAS3C2-ICMSVAL       PIC  X(20) VALUE 'VLR ICMS      '.
+121238     05 FILLER               PIC  X(01) VALUE '#'.
+121239     05 WAS3C2-IPIVAL        PIC  X(20) VALUE 'VLR IPI       '.
+121240     05 FILLER               PIC  X(01) VALUE '#'.
+121241     05 WAS3C2-ICMSSVAL      PIC  X(20) VALUE 'VLR ICMSSVAL  '.
+121242     05 FILLER               PIC  X(01) VALUE '#'.
+121243     05 WAS3C2-PISSVAL       PIC  X(20) VALUE 'VLR PISSVAL   '.
+121244     05 FILLER               PIC  X(01) VALUE '#'.
+121245     05 WAS3C2-FINSVAL       PIC  X(20) VALUE 'VLR FINSVAL   '.
+121246     05 FILLER               PIC  X(01) VALUE '#'.
+121247
+121248  01 WAS3D-G.
+121249     05 WAS3D-REFERENCIA     PIC  X(10).
+121250     05 FILLER               PIC  X(01) VALUE '#'.
+121251     05 WAS3D-CNPJ           PIC  X(14).
+121252     05 FILLER               PIC  X(01) VALUE '#'.
+121253     05 WAS3D-MERCADORIA     PIC  X(24).
+121254     05 FILLER               PIC  X(01) VALUE '#'.
+121255     05 WAS3D-INVOICENO      PIC  9(09).
+121256     05 FILLER               PIC  X(01) VALUE '#'.
+121257     05 WAS3D-SERIE          PIC  X(05).
+121258     05 FILLER               PIC  X(01) VALUE '#'.
+121259     05 WAS3D-VIN            PIC  X(17).
+121260     05 FILLER               PIC  X(01) VALUE '#'.
+121261     05 WAS3D-CLAFISCODE     PIC  X(10)B(01).
+121262     05 FILLER               PIC  X(01) VALUE '#'.
+121263     05 WAS3D-MKTDESCR       PIC  X(40).
+121264     05 FILLER               PIC  X(01) VALUE '#'.
+121265     05 FILLER               PIC  X(04) VALUE ' '.
+121266     05 WAS3D-SALESMODAL     PIC  X(03)B(03).
+121267     05 FILLER               PIC  X(01) VALUE '#'.
+121268     05 FILLER               PIC  X(02) VALUE ' '.
+121269     05 WAS3D-STATECODE      PIC  X(02)B(02).
+121270     05 FILLER               PIC  X(01) VALUE '#'.
+121271     05 FILLER               PIC  X(04) VALUE ' '.
+121272     05 WAS3D-INVOILOCAL     PIC  X(02)B(04).
+121273     05 FILLER               PIC  X(01) VALUE '#'.
+121274     05 FILLER               PIC  X(04) VALUE ' '.
+121275     05 WAS3D-BUILDLOCAL     PIC  X(02)B(04).
+121276     05 FILLER               PIC  X(01) VALUE '#'.
+121277     05 WAS3D-ISSUEDT        PIC  X(10).
+121278     05 FILLER               PIC  X(01) VALUE '#'.
+121279     05 WAS3D-INVOICEVAL     PIC  -.---.---.---.--9,99.
+121280     05 FILLER               PIC  X(01) VALUE '#'.
+121281     05 WAS3D-ICMSVAL        PIC  -.---.---.---.--9,99.
+121282     05 FILLER               PIC  X(01) VALUE '#'.
+121283     05 WAS3D-IPIVAL         PIC  -.---.---.---.--9,99.
+121284     05 FILLER               PIC  X(01) VALUE '#'.
+121285     05 WAS3D-ICMSSVAL       PIC  -.---.---.---.--9,99.
+121286     05 FILLER               PIC  X(01) VALUE '#'.
+121287     05 WAS3D-PISSVAL        PIC  -.---.---.---.--9,99.
+121288     05 FILLER               PIC  X(01) VALUE '#'.
+121289     05 WAS3D-FINSVAL        PIC  -.---.---.---.--9,99.
+121290     05 FILLER               PIC  X(01) VALUE '#'.
+121291
+121292  01 WAS3D2-G.
+121293     05 WAS3D2-REFERENCIA    PIC  X(10).
+121294     05 FILLER               PIC  X(01) VALUE '#'.
+121295     05 WAS3D2-CNPJ          PIC  X(14).
+121296     05 FILLER               PIC  X(01) VALUE '#'.
+121297     05 WAS3D2-MERCADORIA    PIC  X(24).
+121298     05 FILLER               PIC  X(01) VALUE '#'.
+121299     05 WAS3D-OBSERVACAO     PIC  X(70).
+121300
+121301
+121302*----------------------------------------------------------------*
+121303
+121304*----------------------------------------------------------------*
+121305*     INCLUDE DE TABELAS E DEFINICAO DE CURSORES                 *
+121306*----------------------------------------------------------------*
+121307     EXEC SQL INCLUDE SQLCA    END-EXEC.
+121308
+121309     EXEC SQL INCLUDE CS050V00 END-EXEC.
+121310
+121311     EXEC SQL INCLUDE FZ030V00 END-EXEC.
+121312
+121313     EXEC SQL INCLUDE FZ031V00 END-EXEC.
+121314
+121315     EXEC SQL INCLUDE FZ032V00 END-EXEC.
+121316
+121317     EXEC SQL INCLUDE FZ033V00 END-EXEC.
+121318
+121319     EXEC SQL INCLUDE FZ041V00 END-EXEC.
+121320
+121321     EXEC SQL INCLUDE FZ101V00 END-EXEC.
+121322
+121323     EXEC SQL INCLUDE FZ301V00 END-EXEC.
+121324
+121325     EXEC SQL INCLUDE FZ302V00 END-EXEC.
+121326
+121327     EXEC SQL INCLUDE FZ303V00 END-EXEC.
+121328
+121329     EXEC SQL INCLUDE WE282V00 END-EXEC.
+121330
+121331     EXEC SQL INCLUDE WE294V00 END-EXEC.
+121332
+121333*
+121334*----------------------------------------------------------------*01450000
+121335
+121336     EXEC    SQL                                                  01470000
+121337           DECLARE CURSPFAB      CURSOR      FOR                  01480000
+121338           SELECT  PKSF_COMPLEMENT,                               01490000
+121339                   ATSV_DESCRICAO                                 01500000
+121340           FROM    AXG0202.PAIC050V_PARAMETRO                     01510000
+121341           WHERE   PKSF_EMPRESA     =  '01'                       01520000
+121342           AND     PKSF_GRUPOPAR    =  'RECB'                     01530000
+121343           AND     PKSF_CODIGPAR    =  'PFAB'                     01540000
+121344           AND     PKSF_COMPLEMENT <>  ' '                        01540000
+121345     END-EXEC.                                                    01550000
+121346
+121347*----------------------------------------------------------------*
+121348
+121349     EXEC SQL
+121350      DECLARE CSR041  CURSOR FOR
+121351        SELECT   ATSF_041PARAM
+121352        FROM   AXG0200.PAIC041V_SOL_PROC
+121353        WHERE   PKSF_041JOBNAME     =  'FFZ7265E'
+121354        ORDER BY  PKND_041SEQ
+121355        WITH UR
+121356     END-EXEC.
+121357
+121358
+121359     EXEC SQL
+121360      DECLARE CSR302A CURSOR FOR
+121361       SELECT   PKSF_302CNPJ
+121362               ,PKSF_302MERCADORIA
+121363               ,PKDT_302REFERENCIA
+121364               ,PKNI_302DIVCODE
+121365               ,PKSF_302ESTRU_PREF
+121366               ,PKSF_302ESTRU_BASI
+121367               ,PKSF_302ESTRU_SUFI
+121368               ,PKSF_302COMPO_PREF
+121369               ,PKSF_302COMPO_BASI
+121370               ,PKSF_302COMPO_SUFI
+121371               ,PKNI_302SEQ_NUM
+121372               ,ATND_302COMPO_CUST
+121373               ,ATND_302PEERIMPFOR
+121374               ,ATND_302VLR_PARIMP
+121375               ,ATNI_302NUM_REF
+121376               ,FKSF_302ESTRU_DIRE
+121377         FROM   AXG0200.PAIC302V_HESTRUTUR
+121378        WHERE
+121379              PKNI_302DIVCODE           =  2
+121380        AND   PKSF_302CNPJ        BETWEEN  :WS-PCNPJ-INI
+121381                                    AND    :WS-PCNPJ-FIM
+121382        AND   PKDT_302REFERENCIA        =  :WS-PARAM-PDATA
+121383        AND   PKSF_302ESTRU_PREF        =  :WS-PARAM-PPREF
+121384        AND   PKSF_302ESTRU_BASI        =  :WS-PARAM-PBASI
+121385        AND   PKSF_302ESTRU_SUFI        =  :WS-PARAM-PSUFI
+121386        ORDER BY PKSF_302CNPJ
+121387                ,PKSF_302COMPO_PREF
+121388                ,PKSF_302COMPO_BASI
+121389                ,PKSF_302COMPO_SUFI
+121390                ,PKNI_302SEQ_NUM
+121391        WITH UR
+121392     END-EXEC.
+121393
+121394     EXEC SQL
+121395      DECLARE CSR302B CURSOR FOR
+121396       SELECT   PKSF_302CNPJ
+121397               ,PKSF_302MERCADORIA
+121398               ,PKDT_302REFERENCIA
+121399               ,PKNI_302DIVCODE
+121400               ,PKSF_302ESTRU_PREF
+121401               ,PKSF_302ESTRU_BASI
+121402               ,PKSF_302ESTRU_SUFI
+121403               ,PKSF_302COMPO_PREF
+121404               ,PKSF_302COMPO_BASI
+121405               ,PKSF_302COMPO_SUFI
+121406               ,PKNI_302SEQ_NUM
+121407               ,ATND_302COMPO_CUST
+121408               ,ATND_302PEERIMPFOR
+121409               ,ATND_302VLR_PARIMP
+121410               ,ATNI_302NUM_REF
+121411         FROM   AXG0200.PAIC302V_HESTRUTUR
+121412        WHERE
+121413              PKNI_302DIVCODE           =  2
+121414        AND   PKSF_302CNPJ        BETWEEN  :WS-PCNPJ-INI
+121415                                    AND    :WS-PCNPJ-FIM
+121416        AND   PKDT_302REFERENCIA        =  :WS-PARAM-PDATA
+121417        AND   PKSF_302MERCADORIA        =  :WS-PARAM-PITEM
+121418        ORDER BY PKSF_302CNPJ
+121419                ,PKSF_302COMPO_PREF
+121420                ,PKSF_302COMPO_BASI
+121421                ,PKSF_302COMPO_SUFI
+121422                ,PKNI_302SEQ_NUM
+121423        WITH UR
+121424     END-EXEC.
+121425
+121426*---------------------------------------------------------------* 00050000
+121427
+121428     EXEC SQL
+121429       DECLARE CSR303  CURSOR FOR
+121430           SELECT
+121431                    PKNI_303INVOICENO
+121432                  , PKSF_303SERIE
+121433                  , FKSF_303VIN
+121434                  , FKSF_303CLAFISCODE
+121435                  , ATSF_303MKTDESCR
+121436                  , FKSF_303SALESMODAL
+121437                  , FKSF_303STATECODE
+121438                  , FKSF_303INVOILOCAL
+121439                  , FKSF_303BUILDLOCAL
+121440                  , ATDT_303ISSUEDT
+121441                  , ATND_303INVOICEVAL
+121442                  , ATND_303ICMSVAL
+121443                  , ATND_303IPIVAL
+121444                  , ATND_303ICMSSVAL
+121445                  , ATND_303PISSVAL
+121446                  , ATND_303FINSVAL
+121447           FROM  AXG0200.PAIC303V_CAT_VEPIS
+121448          WHERE  PKDT_303REFERENCIA   =  :PKDT-302REFERENCIA
+121449            AND  PKSF_303CNPJ         =  :PKSF-302CNPJ
+121450            AND  PKNI_303DIVCODE      =  :PKNI-302DIVCODE
+121451            AND  PKSF_303TMA          =  :WS-TMA-MERC
+121452            AND  PKSF_303PACKAGE      =  :WS-PACKAGE-MERC
+121453            AND  PKNI_303MODELYR      =  :WS-MODELYR-MERC9
+121454****        AND  PKSF_303EPAINTCODE   =  :WS-EPAINTCODE
+121455****        AND  PKSF_303IPAINTCODE   =  :WS-IPAINTCODE
+121456            AND  PKNI_303INVOICENO   <>  999999999
+121457       WITH UR
+121458     END-EXEC.
+121459*                                                                 03430000
+121460*---------------------------------------------------------------* 00050000
+121461
+121462*----------------------------------------------------------------*
+121463 PROCEDURE                   DIVISION.
+121464*------------------------------------*
+121465*------------------------------------*
+121466
+121467 0000-00-INICIO               SECTION.
+121468*------------------------------------*
+121469
+121470     PERFORM 0100-00-INICIALIZACAO.
+121471
+121472     MOVE SPACES                 TO WCH-FIM-CSR041.
+121473
+121474     PERFORM 1100-00-CSR041-OPEN.
+121475
+121476     PERFORM 1300-00-CSR041-FETCH.
+121477
+121478     PERFORM 1400-00-PROCESSA-CSR041  UNTIL
+121479             WCH-FIM-CSR041       EQUAL   'F'.
+121480
+121481     PERFORM 1200-00-CSR041-CLOSE.
+121482
+121483     PERFORM 8700-00-DELETE-FZ041V.
+121484
+121485     CLOSE       AS1ESTRU
+121486                 AS2NFENT
+121487                 AS3NFSAI
+121488                 EB1NFENT.
+121489
+121490     DISPLAY '*-------------------------------------------*'
+121491     DISPLAY '*-   FIM NORMAL DO PGM FZ016A00            -*'
+121492     DISPLAY '*-------------------------------------------*'
+121493
+121494     PERFORM 8800-00-DISPLAY-WAC.
+121495
+121496     GOBACK.
+121497
+121498 0000-99-EXIT. EXIT.
+121499*----------------------------------------------------------------*
+121500
+121501*----------------------------------------------------------------*
+121502 0100-00-INICIALIZACAO        SECTION.
+121503*------------------------------------*
+121504
+121505     DISPLAY '*-------------------------------------------*'
+121506     DISPLAY '*-     INICIO PGM FZ016A00                  *'
+121507     DISPLAY '*-------------------------------------------*'
+121508
+121509     OPEN OUTPUT AS1ESTRU
+121510                 AS2NFENT
+121511                 AS3NFSAI.
+121512
+121513     OPEN  INPUT EB1NFENT.
+121514
+121515     EXEC SQL
+121516          SET :WPARAM-DATA-DB2 = CURRENT DATE
+121517     END-EXEC.
+121518
+121519     EXEC SQL
+121520          SET :WPARAM-HORA-DB2 = CURRENT TIME
+121521     END-EXEC.
+121522
+121523     MOVE WPARAM-DATA-DB2   TO WAS1C1-DTPROC
+121524                               WAS2C1-DTPROC
+121525                               WAS3C1-DTPROC.
+121526
+121527     MOVE WPARAM-HORA-DB2   TO WAS1C1-HRPROC
+121528                               WAS2C1-HRPROC
+121529                               WAS3C1-HRPROC.
+121530
+121531     MOVE  'N'    TO  WS-FIM-PFAB                                 01901300
+121532     MOVE  ZEROS  TO  IX1                                         01901300
+121533
+121534     PERFORM 0200-00-OPEN-CURSPFAB                                01911000
+121535
+121536     PERFORM 0300-00-MONTA-PFAB UNTIL WS-FIM-PFAB = 'S'           01920000
+121537
+121538     PERFORM 0400-00-CLOSE-CURSPFAB                               01920100
+121539
+121540     WRITE AS1ESTRU-REG FROM WAS1C1-G.
+121541     WRITE AS1ESTRU-REG FROM WAS1C2-G.
+121542
+121543     WRITE AS2NFENT-REG FROM WAS2C1-G.
+121544     WRITE AS2NFENT-REG FROM WAS2C2-G.
+121545
+121546     WRITE AS3NFSAI-REG FROM WAS3C1-G.
+121547     WRITE AS3NFSAI-REG FROM WAS3C2-G.
+121548
+121549
+121550 0100-99-EXIT. EXIT.
+121551*----------------------------------------------------------------*
+121552
+121553*----------------------------------------------------------------*
+121554 0200-00-OPEN-CURSPFAB        SECTION.                            02044500
+121555*------------------------------------*
+121556                                                                  02044600
+121557     EXEC SQL                                                     02044700
+121558          OPEN     CURSPFAB                                       02044800
+121559     END-EXEC.                                                    02044900
+121560                                                                  02045000
+121561     IF  SQLCODE  NOT EQUAL  +000                                 02045100
+121562         MOVE '0200-00-OPEN-CURSPFAB'     TO WAB-PARAGRAFO
+121563         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+121564         GO   TO 9999-00-ABENDA
+121565     END-IF.                                                      02045800
+121566*                                                                 02045900
+121567 0200-99-OPEN-CURSPFAB-EXIT.                                      02046000
+121568     EXIT.                                                        02046100
+121569*----------------------------------------------------------------*
+121570
+121571*----------------------------------------------------------------*
+121572 0300-00-MONTA-PFAB           SECTION.                            02046300
+121573*------------------------------------*
+121574
+121575     EXEC SQL                                                     02046400
+121576           FETCH  CURSPFAB                                        02046500
+121577            INTO  :WS-COMPLEMENT                                  02046600
+121578                 ,:WS-DESCRICAO                                   02046700
+121579     END-EXEC.                                                    02046800
+121580                                                                  02046900
+121581     IF  SQLCODE      EQUAL    +100                               02047000
+121582         MOVE         'S'  TO  WS-FIM-PFAB                        02047100
+121583         GO           0300-99-MONTA-PFAB-EXIT                     02047200
+121584     END-IF.                                                      02047300
+121585                                                                  02048600
+121586     ADD  1    TO    IX1.                                         02048700
+121587                                                                  02048600
+121588     IF  SQLCODE      =  +000                                     02047500
+121589         IF  IX1  GREATER  50                                     02047600
+121590             MOVE ZEROS TO SQLCODE
+121591             MOVE '0300-00-MONTA-PFAB'     TO WAB-PARAGRAFO
+121592             MOVE 'ESTOURO TABELA INTERNA' TO WAB-OBS
+121593             GO   TO 9999-00-ABENDA
+121594         ELSE                                                     02047600
+121595             MOVE  WS-COMPLEMENT        TO  WS-PFAB-GSDB (IX1)    02047600
+121596             MOVE  WS-DESCRICAO (16:14) TO  WS-PFAB-CNPJ (IX1)    02047700
+121597         END-IF                                                   02047600
+121598     ELSE                                                         02047800
+121599         MOVE '0300-00-MONTA-PFAB'        TO WAB-PARAGRAFO
+121600         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+121601         GO   TO 9999-00-ABENDA
+121602     END-IF.                                                      02048500
+121603                                                                  02048800
+121604                                                                  02048800
+121605 0300-99-MONTA-PFAB-EXIT.                                         02048900
+121606     EXIT.                                                        02049000
+121607*----------------------------------------------------------------*
+121608
+121609*----------------------------------------------------------------*
+121610 0400-00-CLOSE-CURSPFAB       SECTION.                            02049200
+121611*------------------------------------*
+121612                                                                  02049300
+121613     EXEC SQL                                                     02049400
+121614          CLOSE     CURSPFAB                                      02049500
+121615     END-EXEC.                                                    02049600
+121616                                                                  02049700
+121617     IF  SQLCODE  NOT EQUAL  +000                                 02049800
+121618         MOVE '0400-00-CLOSE-CURSPFAB'    TO WAB-PARAGRAFO
+121619         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+121620         GO   TO 9999-00-ABENDA
+121621     END-IF.                                                      02050500
+121622                                                                  02050600
+121623 0400-99-CLOSE-CURSPFAB-EXIT.                                     02050700
+121624     EXIT.                                                        02050800
+121625*----------------------------------------------------------------*
+121626
+121627
+121628*----------------------------------------------------------------*
+121629 1100-00-CSR041-OPEN          SECTION.
+121630*------------------------------------*
+121631
+121632     EXEC SQL OPEN CSR041 END-EXEC.
+121633
+121634     IF  SQLCODE  NOT EQUAL ZEROS
+121635         MOVE '1100-00-CSR041-OPEN'       TO WAB-PARAGRAFO
+121636         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+121637         GO   TO 9999-00-ABENDA
+121638     END-IF.
+121639
+121640 1100-99-EXIT. EXIT.
+121641*----------------------------------------------------------------*
+121642
+121643*----------------------------------------------------------------*
+121644 1200-00-CSR041-CLOSE         SECTION.
+121645*------------------------------------*
+121646
+121647     EXEC SQL CLOSE CSR041 END-EXEC.
+121648
+121649     IF  SQLCODE  NOT EQUAL ZEROS
+121650         MOVE '1200-00-CSR041-CLOSE'      TO WAB-PARAGRAFO
+121651         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+121652         GO   TO 9999-00-ABENDA
+121653     END-IF.
+121654
+121655 1200-99-EXIT. EXIT.
+121656*----------------------------------------------------------------*
+121657
+121658*----------------------------------------------------------------*
+121659 1300-00-CSR041-FETCH         SECTION.
+121660*------------------------------------*
+121661
+121662     MOVE  SPACES     TO      WS-CHAVES
+121663
+121664     EXEC SQL
+121665      FETCH CSR041
+121666       INTO  :WS-PARAM-AUX
+121667     END-EXEC.
+121668
+121669     IF  SQLCODE  NOT EQUAL ZEROS AND +100
+121670         MOVE '1300-00-CSR041-FETCH'      TO WAB-PARAGRAFO
+121671         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+121672         GO   TO 9999-00-ABENDA
+121673     END-IF.
+121674
+121675     IF  SQLCODE  EQUAL +100
+121676         MOVE 'F'                TO WCH-FIM-CSR041
+121677     ELSE
+121678         ADD  +1                 TO WAC-LID-CSR041
+121679     END-IF.
+121680
+121681
+121682 1300-99-EXIT. EXIT.
+121683*----------------------------------------------------------------*
+121684
+121685*----------------------------------------------------------------*
+121686 1400-00-PROCESSA-CSR041      SECTION.
+121687*------------------------------------*
+121688
+121689     IF  WS-PARAM-PCNPJ  EQUAL  SPACES
+121690         MOVE  LOW-VALUES      TO  WS-PCNPJ-INI
+121691         MOVE  HIGH-VALUES     TO  WS-PCNPJ-FIM
+121692     ELSE
+121693         MOVE  WS-PARAM-PCNPJ  TO  WS-PCNPJ-INI
+121694         MOVE  WS-PARAM-PCNPJ  TO  WS-PCNPJ-FIM
+121695     END-IF.
+121696
+121697* US3434324 - VALIDAR SOLICITAùﬁO ONLINE PARA A ROTINA -------*
+121698     IF  WS-PARAM-PTIPO  =  'CA'
+121699     AND WS-PARAM-PCNPJ  NOT EQUAL  SPACES
+121700         MOVE     SPACES  TO  WS-SOLIC
+121701         PERFORM  1400-01-VERIFICA-SOLIC
+121702         IF  WS-SOLIC = 'NAO'
+121703     DISPLAY '*************************************************'
+121704        DISPLAY '* SOLICIT.COM DATA INV›LIDA = ' WS-PARAM-PDATA
+121705             DISPLAY '* PARA A MERCADORIA    = ' WS-PARAM-PPREF
+121706                                                 WS-PARAM-PBASI
+121707                                                 WS-PARAM-PSUFI
+121708     DISPLAY '*************************************************'
+121709             GO TO   NOVA-SOLIC
+121710         END-IF
+121711     END-IF.
+121712
+121713     MOVE SPACES                 TO WCH-FIM-CSR302.
+121714
+121715     PERFORM 2100-00-CSR302-OPEN.
+121716
+121717     PERFORM 2200-00-CSR302-FETCH.
+121718
+121719     PERFORM 2400-00-PROCESSA-CSR302 UNTIL
+121720                        WCH-FIM-CSR302   EQUAL  'F'.
+121721
+121722     PERFORM 2300-00-CSR302-CLOSE.
+121723
+121724 NOVA-SOLIC.
+121725     PERFORM 1300-00-CSR041-FETCH.
+121726
+121727 1400-99-EXIT. EXIT.
+121728*----------------------------------------------------------------*
+121729
+121730*----------------------------------------------------------------*
+121731 1400-01-VERIFICA-SOLIC       SECTION.
+121732*----------------------------------------------------------------*
+121733     MOVE  WS-PARAM-PPECA  TO  WS-AUX-PPECA.
+121734     MOVE  WS-PECA-01      TO  WS303-PARAM-PPREF.
+121735     MOVE  WS-PECA-02      TO  WS303-PARAM-PBASI
+121736     MOVE  WS-PECA-03      TO  WS-CHAR4.
+121737
+121738     IF    WS-CHAR4        IS  NUMERIC
+121739           MOVE WS-NUM4         TO  WS303-PARAM-MODELYR
+121740     ELSE
+122920           GO TO  1400-01-EXIT
+123000     END-IF.
+123001
+123002     EXEC SQL
+123003          SELECT  FKSF_303VIN
+123004          INTO   :FKSF-303VIN
+123005            FROM AXG0200.PAIC303V_CAT_VEPIS
+123006           WHERE PKSF_303CNPJ        = :WS-PARAM-PCNPJ
+123007             AND PKDT_303REFERENCIA  = :WS-PARAM-PDATA
+123008             AND PKSF_303TMA         = :WS303-PARAM-PPREF
+123009             AND PKSF_303PACKAGE     = :WS303-PARAM-PBASI
+123010             AND PKNI_303MODELYR     = :WS303-PARAM-MODELYR
+123011             AND PKSF_303EPAINTCODE  = ' '
+123012             AND PKSF_303IPAINTCODE  = ' '
+123013             AND PKNI_303DIVCODE     = 02
+123014             AND PKNI_303INVOICENO   = 999999999
+123015         WITH UR
+123016     END-EXEC.
+123017
+123018
+127829     MOVE SQLCODE TO WAB-SQLCODE.
+127830*                                                                 01440012
+127831     IF  SQLCODE  EQUAL  +000
+127832         EXEC SQL
+127833              SELECT  FKSF_303VIN
+127834                INTO :FKSF-303VIN
+127835            FROM AXG0200.PAIC303V_CAT_VEPIS
+127836           WHERE PKSF_303CNPJ        = :WS-PARAM-PCNPJ
+127837             AND PKDT_303REFERENCIA  = :WS-PARAM-PDATA
+127838             AND PKSF_303TMA         = :WS303-PARAM-PPREF
+127839             AND PKSF_303PACKAGE     = :WS303-PARAM-PBASI
+127840             AND PKNI_303MODELYR     = :WS303-PARAM-MODELYR
+127841             AND PKSF_303EPAINTCODE = ' '
+127842             AND PKSF_303IPAINTCODE = ' '
+127843             AND PKNI_303DIVCODE = 88
+127844             AND PKNI_303INVOICENO = 999999999
+127845             WITH UR
+127846         END-EXEC
+127847
+127848     MOVE SQLCODE TO WAB-SQLCODE
+127849
+127850         IF  SQLCODE  EQUAL  +000
+127851             GO TO  1400-01-EXIT
+127852         END-IF
+127853     END-IF.
+127854
+127855     MOVE    'NAO'    TO  WS-SOLIC.
+127856
+127857 1400-01-EXIT. EXIT.
+127858*----------------------------------------------------------------*
+127859
+127860*----------------------------------------------------------------*
+127861 2100-00-CSR302-OPEN          SECTION.
+127862*------------------------------------*
+127863
+127864     IF  WS-PARAM-PTIPO  =  'CJ'
+127865         EXEC SQL OPEN CSR302A END-EXEC
+127866         IF  SQLCODE  NOT EQUAL ZEROS
+127867             MOVE '2100-00-CSR302-OPEN'       TO WAB-PARAGRAFO
+127868             MOVE 'PROBLEMA NO ACESSO DB2 - OPEN CSR302A'
+127869                                              TO WAB-OBS
+127870             GO   TO 9999-00-ABENDA
+127871         END-IF
+127872     ELSE
+127873         EXEC SQL OPEN CSR302B END-EXEC
+127874         IF  SQLCODE  NOT EQUAL ZEROS
+127875             MOVE '2100-00-CSR302-OPEN'       TO WAB-PARAGRAFO
+127876             MOVE 'PROBLEMA NO ACESSO DB2 - OPEN CSR302B'
+127877                                              TO WAB-OBS
+127878             GO   TO 9999-00-ABENDA
+127879         END-IF
+127880     END-IF.
+127881
+127882
+127883 2100-99-EXIT. EXIT.
+127884*----------------------------------------------------------------*
+127885
+127886*----------------------------------------------------------------*
+127887 2200-00-CSR302-FETCH         SECTION.
+127888*------------------------------------*
+127889
+127890     INITIALIZE DCLPAIC302V-HESTRUTUR
+127891
+127892     IF  WS-PARAM-PTIPO  =  'CJ'
+127893         EXEC SQL
+127894              FETCH CSR302A
+127895              INTO  :PKSF-302CNPJ
+127896                   ,:PKSF-302MERCADORIA
+127897                   ,:PKDT-302REFERENCIA
+127898                   ,:PKNI-302DIVCODE
+127899                   ,:PKSF-302ESTRU-PREF
+127900                   ,:PKSF-302ESTRU-BASI
+127901                   ,:PKSF-302ESTRU-SUFI
+127902                   ,:PKSF-302COMPO-PREF
+127903                   ,:PKSF-302COMPO-BASI
+127904                   ,:PKSF-302COMPO-SUFI
+127905                   ,:PKNI-302SEQ-NUM
+127906                   ,:ATND-302COMPO-CUST
+127907                   ,:ATND-302PEERIMPFOR
+127908                   ,:ATND-302VLR-PARIMP
+127909                   ,:ATNI-302NUM-REF
+127910                   ,:FKSF-302ESTRU-DIRE
+127911         END-EXEC
+127912         IF  SQLCODE  NOT EQUAL ZEROS AND +100
+127913             MOVE '2200-00-CSR302-FETCH'      TO WAB-PARAGRAFO
+127914             MOVE 'PROBLEMA NO ACESSO DB2-FETCH CSR302A'
+127915                                              TO WAB-OBS
+127916             GO   TO 9999-00-ABENDA
+127917         END-IF
+127918     ELSE
+127919         EXEC SQL
+127920              FETCH CSR302B
+127921              INTO  :PKSF-302CNPJ
+127922                   ,:PKSF-302MERCADORIA
+127923                   ,:PKDT-302REFERENCIA
+127924                   ,:PKNI-302DIVCODE
+127925                   ,:PKSF-302ESTRU-PREF
+127926                   ,:PKSF-302ESTRU-BASI
+127927                   ,:PKSF-302ESTRU-SUFI
+127928                   ,:PKSF-302COMPO-PREF
+127929                   ,:PKSF-302COMPO-BASI
+127930                   ,:PKSF-302COMPO-SUFI
+127931                   ,:PKNI-302SEQ-NUM
+127932                   ,:ATND-302COMPO-CUST
+127933                   ,:ATND-302PEERIMPFOR
+127934                   ,:ATND-302VLR-PARIMP
+127935                   ,:ATNI-302NUM-REF
+127936                   ,:FKSF-302ESTRU-DIRE
+127937         END-EXEC
+127938         IF  SQLCODE  NOT EQUAL ZEROS AND +100
+127939             MOVE '2200-00-CSR302-FETCH'      TO WAB-PARAGRAFO
+127940             MOVE 'PROBLEMA NO ACESSO DB2-FETCH CSR302B'
+127941                                              TO WAB-OBS
+127942             GO   TO 9999-00-ABENDA
+127943         END-IF
+127944     END-IF.
+127945
+127946     IF  SQLCODE  EQUAL  +100
+127947         MOVE 'F'                TO WCH-FIM-CSR302
+127948     ELSE
+127949         ADD  +1                 TO WAC-LID-CSR302
+127950     END-IF.
+127951
+127952
+127953 2200-99-EXIT. EXIT.
+127954*----------------------------------------------------------------*
+127955
+127956*----------------------------------------------------------------*
+127957 2300-00-CSR302-CLOSE         SECTION.
+127958*------------------------------------*
+127959
+127960     IF  WS-PARAM-PTIPO  =  'CJ'
+127961         EXEC SQL CLOSE CSR302A END-EXEC
+127962         IF  SQLCODE  NOT EQUAL ZEROS
+127963             MOVE '2300-00-CSR302-CLOSE'      TO WAB-PARAGRAFO
+127964             MOVE 'PROBLEMA NO ACESSO DB2 - CLOSE CSR302A'
+127965                                              TO WAB-OBS
+127966             GO   TO 9999-00-ABENDA
+127967         END-IF
+127968     ELSE
+127969         EXEC SQL CLOSE CSR302B END-EXEC
+127970         IF  SQLCODE  NOT EQUAL ZEROS
+127971             MOVE '2300-00-CSR302-CLOSE'      TO WAB-PARAGRAFO
+127972             MOVE 'PROBLEMA NO ACESSO DB2 - CLOSE CSR302B'
+127973                                              TO WAB-OBS
+127974             GO   TO 9999-00-ABENDA
+127975         END-IF
+127976     END-IF.
+127977
+127978
+127979 2300-99-EXIT. EXIT.
+127980*----------------------------------------------------------------*
+127981
+127982*----------------------------------------------------------------*
+127983 2400-00-PROCESSA-CSR302      SECTION.
+127984*------------------------------------*
+127985
+127986     IF  WS-PARAM-PTIPO  =  'CA'
+127987         PERFORM  3000-00-TRATA-CATALOGO
+127988         PERFORM  2500-00-GERA-AS2
+127989*****ELSE
+127990*****    PERFORM  8000-00-TRATA-CONJUNTO
+127991     END-IF.
+127992
+127993     PERFORM 2200-00-CSR302-FETCH.
+127994
+127995
+127996 2400-99-EXIT. EXIT.
+127997*----------------------------------------------------------------*
+127998
+127999*----------------------------------------------------------------*
+128000 2500-00-GERA-AS2             SECTION.
+128001*------------------------------------*
+128002
+128003     MOVE PKSF-302CNPJ             TO WAS1D-CNPJ
+128004     MOVE PKSF-302MERCADORIA       TO WAS1D-MERCADORIA
+128005     MOVE PKDT-301REFERENCIA       TO WAS1D-REFER-CATAL
+128006                                                                  01080000
+128007     MOVE ATND-301VLSAIDAINT       TO WAS1D-VLSAIDA-OFIC
+128008     MOVE ATND-301VLPARCELA        TO WAS1D-VLPARC-OFIC
+128009     MOVE ATND-301CI               TO WAS1D-CI-OFIC
+128010                                                                  01080000
+128011     MOVE WS-ATND-303VLRMEDIO      TO WAS1D-VLSAIDA-CALC
+128012     MOVE WS-VLPARC-CALC           TO WAS1D-VLPARC-CALC
+128013     MOVE WS-CI-CALC               TO WAS1D-CI-CALC
+128014                                                                  01080000
+128015     IF  WS-ORIGEM-VLR  EQUAL  'FTMTO'
+128016         MOVE 'FATURAMENTO'            TO WAS1D-ORIGEM-VLR
+128017     ELSE
+128018         IF  WS-ORIGEM-VLR  EQUAL  'LISTA'
+128019             MOVE 'LISTA DE PRECO'         TO WAS1D-ORIGEM-VLR
+128020         ELSE
+128021             MOVE SPACES                   TO WAS1D-ORIGEM-VLR
+128022         END-IF
+128023     END-IF
+128024                                                                  01080000
+128025     MOVE SPACES                   TO WS-CLAFISC
+128026     MOVE ATNI-301NCM              TO WS-CLAFISCOD
+128027     MOVE WS-CLAFISC               TO WAS1D-NCM
+128028                                                                  01080000
+128029     MOVE ATSV-301MERCADORIA-TEXT  TO WAS1D-MERC-DESCR
+128030     MOVE ATSF-301STATUS           TO WAS1D-STATUS
+128031
+128032     MOVE WS-301VLSAIDAINT-PREV    TO WAS1D-PREVIA-VLRMED
+128033     MOVE WS-301VLPARCELA-PREV     TO WAS1D-PREVIA-PARIMP
+128034     MOVE WS-301PREVIA-FCI-PREV    TO WAS1D-PREVIA-FCI
+128035     MOVE PKDT-302REFERENCIA       TO WAS1D-DATA-PREVIA
+128036
+128037     MOVE PKDT-302REFERENCIA       TO WAS1D-REFER-CALC
+128038     MOVE PKSF-302COMPO-PREF       TO WAS1D-COMPO-PREF
+128039     MOVE PKSF-302COMPO-BASI       TO WAS1D-COMPO-BASI
+128040     MOVE PKSF-302COMPO-SUFI       TO WAS1D-COMPO-SUFI
+128041     MOVE PKNI-302SEQ-NUM          TO WAS1D-SEQ-NUM
+128042     MOVE ATND-302VLR-PARIMP       TO WAS1D-VLR-PARIMP
+128043     MOVE WS-LEGAL-ENT             TO WAS1D-LEGAL-ENT
+128044     MOVE WS-LEGAL-ENT-DT          TO WAS1D-LEGAL-ENT-DT
+128045     MOVE WS-PART-USAGE            TO WAS1D-PART-USAGE
+128046     MOVE WS-FROM-CTRY             TO WAS1D-FROM-CTRY
+128047     MOVE ATND-101VLR-IMP          TO WAS1D-VLR-IMP
+128048     MOVE PKDT-101REFERENCIA       TO WAS1D-REFER-COMP
+128049     MOVE ATSF-101NCM              TO WAS1D-NCM-COMP
+128050     MOVE ATSF-101UNIDPECA         TO WAS1D-UNIDPECA
+128051     MOVE ATND-101PERC-IMP         TO WAS1D-PERC-IMP
+128052     MOVE ATNI-302NUM-REF          TO WAS1D-NUM-REF
+128053
+128054     WRITE AS1ESTRU-REG          FROM WAS1D-G.
+128055     ADD  +1                     TO WAC-GRV-AS1.
+128056
+128057 2500-99-EXIT. EXIT.
+128058*----------------------------------------------------------------*
+128059
+128060*----------------------------------------------------------------*
+128061 3000-00-TRATA-CATALOGO       SECTION.
+128062*------------------------------------*
+128063
+128064     IF  PKSF-302MERCADORIA  EQUAL  WS-MERCADORIA-ANT   AND
+128065         PKSF-302CNPJ        EQUAL  WS-CNPJ-ANT
+128066         GO   TO    3000-10-TRATA-COMPONENTE
+128067     END-IF
+128068
+128069     MOVE  PKSF-302CNPJ        TO   WS-CNPJ-ANT
+128070     MOVE  PKSF-302MERCADORIA  TO   WS-MERCADORIA-ANT
+128071
+128072     PERFORM 3100-00-ACESSA-FZ303V00
+128073
+128074     PERFORM 3200-00-ACESSA-FZ030V00
+128075
+128076     IF  SQLCODE  EQUAL  +100
+128077         MOVE '3000-00-TRATA-CATALOGO'    TO WAB-PARAGRAFO
+128078         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ030V00'
+128079                                          TO WAB-OBS
+128080         DISPLAY '* VIN NAO LOCALIZADO NA FZ030V00        *'      04200000
+128081         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+128082         DISPLAY '* PKSF-302MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128083         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128084         DISPLAY '* FKSF-303VIN        = ' FKSF-303VIN
+128085         GO   TO 9999-00-ABENDA
+128086     END-IF.
+128087
+128088     PERFORM 3400-00-ACESSA-FZ301V00.
+128089
+128090     PERFORM 3500-00-SUM-FZ302V00.
+128091
+128092     PERFORM 4000-00-TRATA-NFS-SAIDA.
+128093
+128094
+128095 3000-10-TRATA-COMPONENTE.
+128096
+128097     PERFORM 3300-00-ACESSA-FZ031V00.
+128098
+128099     PERFORM 5000-00-TRATA-NFS-ENTRADA.
+128100
+128101
+128102 3000-99-EXIT. EXIT.
+128103*----------------------------------------------------------------*
+128104
+128105*----------------------------------------------------------------*
+128106 3100-00-ACESSA-FZ303V00      SECTION.
+128107*------------------------------------*
+128108
+128109     MOVE  PKSF-302MERCADORIA   TO    WS-MERCADORIA.
+128110     MOVE  WS-MODELYR-MERC      TO    WS-MODELYR-MERC9.
+128111
+128112*-------------   ACESSA DADOS FCI NA FZ303V00 ------------------
+128113
+128114     EXEC SQL
+128115          SELECT  FKSF_303VIN
+128116                 ,ATND_303VLRMEDIO
+128117                 ,ATND_303VLRMED_PRE
+128118                 ,ATSF_303ORIGEM
+128119          INTO   :FKSF-303VIN
+128120                ,:WS-ATND-303VLRMEDIO
+128121                ,:WS-ATND-303VLRMED-PRE
+128122                ,:WS-ORIGEM-VLR
+128123          FROM   AXG0200.PAIC303V_CAT_VEPIS
+128124          WHERE  PKSF_303CNPJ        =  :PKSF-302CNPJ
+128125            AND  PKDT_303REFERENCIA  =  :PKDT-302REFERENCIA
+128126            AND  PKSF_303TMA         =  :WS-TMA-MERC
+128127            AND  PKSF_303PACKAGE     =  :WS-PACKAGE-MERC
+128128            AND  PKNI_303MODELYR     =  :WS-MODELYR-MERC9
+128129            AND  PKSF_303EPAINTCODE  =  :WS-EPAINTCODE
+128130            AND  PKSF_303IPAINTCODE  =  :WS-IPAINTCODE
+128131            AND  PKNI_303DIVCODE     =  :PKNI-302DIVCODE
+128132            AND  PKNI_303INVOICENO   =  999999999
+128133          WITH UR
+128134     END-EXEC.
+128135
+128136     IF  SQLCODE  NOT EQUAL  ZEROS  AND  +100
+128137         MOVE '3100-00-ACESSA-FZ303V00'   TO WAB-PARAGRAFO
+128138         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ303V00'
+128139                                          TO WAB-OBS
+128140         DISPLAY '* PROBLEMA NO ACESSO DB2 - SELECT FZ303V00 *'   04200000
+128141         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+128142         DISPLAY '* PKSF-302MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128143         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128144         DISPLAY '* PKSF-302COMPO-PREF = ' PKSF-302COMPO-PREF
+128145         DISPLAY '* PKSF-302COMPO-BASI = ' PKSF-302COMPO-BASI
+128146         DISPLAY '* PKSF-302COMPO-SUFI = ' PKSF-302COMPO-SUFI
+128147         GO   TO 9999-00-ABENDA
+128148     END-IF.
+128149
+128150     IF  SQLCODE  EQUAL  +100
+128151         MOVE '3100-00-ACESSA-FZ303V00'    TO WAB-PARAGRAFO
+128152         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ303V00'
+128153                                          TO WAB-OBS
+128154         DISPLAY '* CATALOGO NAO LOCALIZADO NA   FZ303V00 *'      04200000
+128155         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+128156         DISPLAY '* PKSF-302MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128157         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128158         DISPLAY '* PKSF-302COMPO-PREF = ' PKSF-302COMPO-PREF
+128159         DISPLAY '* PKSF-302COMPO-BASI = ' PKSF-302COMPO-BASI
+128160         DISPLAY '* PKSF-302COMPO-SUFI = ' PKSF-302COMPO-SUFI
+128161         GO   TO 9999-00-ABENDA
+128162     END-IF.
+128163
+128164*-------------   ACESSA DADOS PREVIA FCI NA FZ303V00 -------------
+128165
+128166 3100-10-ACESSA-FZ303V00.
+128167
+128168     EXEC SQL
+128169          SELECT  ATND_303VLRMED_PRE
+128170          INTO   :WS-ATND-303VLRMED-PRE
+128171          FROM   AXG0200.PAIC303V_CAT_VEPIS
+128172          WHERE  PKSF_303CNPJ        =  :PKSF-302CNPJ
+128173            AND  PKDT_303REFERENCIA  =  :PKDT-302REFERENCIA
+128174            AND  PKSF_303TMA         =  :WS-TMA-MERC
+128175            AND  PKSF_303PACKAGE     =  :WS-PACKAGE-MERC
+128176            AND  PKNI_303MODELYR     =  :WS-MODELYR-MERC9
+128177            AND  PKSF_303EPAINTCODE  =  :WS-EPAINTCODE
+128178            AND  PKSF_303IPAINTCODE  =  :WS-IPAINTCODE
+128179            AND  PKNI_303DIVCODE     =  88
+128180            AND  PKNI_303INVOICENO   =  999999999
+128181          WITH UR
+128182     END-EXEC.
+128183
+128184     IF  SQLCODE  NOT EQUAL  ZEROS  AND  +100
+128185         MOVE '3100-10-ACESSA-FZ303V00'   TO WAB-PARAGRAFO
+128186         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ303V00'
+128187                                          TO WAB-OBS
+128188         DISPLAY '* PROBLEMA NO ACESSO DB2 - SELECT FZ303V00 *'   04200000
+128189         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+128190         DISPLAY '* PKSF-302MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128191         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128192         DISPLAY '* PKSF-302COMPO-PREF = ' PKSF-302COMPO-PREF
+128193         DISPLAY '* PKSF-302COMPO-BASI = ' PKSF-302COMPO-BASI
+128194         DISPLAY '* PKSF-302COMPO-SUFI = ' PKSF-302COMPO-SUFI
+128195         GO   TO 9999-00-ABENDA
+128196     END-IF.
+128197
+128198     IF  SQLCODE  EQUAL  +100
+128199         MOVE '3100-10-ACESSA-FZ303V00'    TO WAB-PARAGRAFO
+128200         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ303V00'
+128201                                          TO WAB-OBS
+128202         DISPLAY '* CATALOGO NAO LOCALIZADO NA   FZ303V00 *'      04200000
+128203         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+128204         DISPLAY '* PKSF-302MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128205         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128206         DISPLAY '* PKSF-302COMPO-PREF = ' PKSF-302COMPO-PREF
+128207         DISPLAY '* PKSF-302COMPO-BASI = ' PKSF-302COMPO-BASI
+128208         DISPLAY '* PKSF-302COMPO-SUFI = ' PKSF-302COMPO-SUFI
+128209         GO   TO 9999-00-ABENDA
+128210     END-IF.
+128211
+128212
+128213 3100-99-EXIT. EXIT.
+128214*----------------------------------------------------------------*
+128215
+128216*----------------------------------------------------------------*
+128217 3200-00-ACESSA-FZ030V00      SECTION.
+128218*------------------------------------*
+128219
+128220      EXEC SQL                                                    05390000
+128221           SELECT  PKSF_030VIN                                    05400000
+128222                  ,ATDT_030OFFL_COST
+128223                  ,ATND_030LEGAL_ENT
+128224                  ,FKSF_030VIN_KEY
+128225           INTO   :PKSF-030VIN                                    04050000
+128226                 ,:ATDT-030OFFL-COST
+128227                     :ATDT-030OFFL-COST-NN
+128228                 ,:ATND-030LEGAL-ENT
+128229                 ,:FKSF-030VIN-KEY
+128230           FROM   AXG0200.PAIC030V_VIN_PROD
+128231           WHERE   PKSF_030VIN  =  :FKSF-303VIN
+128232           WITH UR
+128233      END-EXEC.
+128234
+128235     IF  SQLCODE  NOT EQUAL ZEROS  AND  +100
+128236         MOVE '3200-00-ACESSA-FZ030V00'   TO WAB-PARAGRAFO
+128237         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ030V00'
+128238                                          TO WAB-OBS
+128239         DISPLAY '* PROBLEMA NO ACESSO DB2 - SELECT FZ030V00 *'   04200000
+128240         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+128241         DISPLAY '* PKSF-302MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128242         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128243         DISPLAY '* PKSF-302COMPO-PREF = ' PKSF-302COMPO-PREF
+128244         DISPLAY '* PKSF-302COMPO-BASI = ' PKSF-302COMPO-BASI
+128245         DISPLAY '* PKSF-302COMPO-SUFI = ' PKSF-302COMPO-SUFI
+128246         DISPLAY '* FKSF-303VIN        = ' FKSF-303VIN
+128247         GO   TO 9999-00-ABENDA
+128248     END-IF
+128249
+128250     IF  SQLCODE  EQUAL ZEROS
+128251         ADD  +1                 TO WAC-LID-FZ030V
+128252         IF  ATDT-030OFFL-COST-NN  LESS  ZEROS
+128253             MOVE  SPACES   TO   ATDT-030OFFL-COST
+128254         END-IF
+128255     ELSE
+128256         MOVE  SPACES   TO   ATDT-030OFFL-COST
+128257     END-IF.
+128258
+128259
+128260 3200-99-EXIT. EXIT.
+128261*----------------------------------------------------------------*
+128262
+128263*----------------------------------------------------------------*
+128264 3300-00-ACESSA-FZ031V00      SECTION.
+128265*------------------------------------*
+128266
+128267     EXEC SQL                                                     04020000
+128268          SELECT   ATND_031LEGAL_ENT
+128269                  ,ATND_031PART_USAGE
+128270                  ,ATSF_031SFROM_CTRY
+128271           INTO   :ATND-031LEGAL-ENT
+128272                 ,:ATND-031PART-USAGE
+128273                 ,:ATSF-031SFROM-CTRY
+128274           FROM AXG0200.PAIC031V_VIN_BOM                          04150000
+128275          WHERE  PKSF_031VIN        =  :FKSF-030VIN-KEY           04200000
+128276            AND  ATSF_031FLAG_FIFO  =  '*'                        04210000
+128277            AND  PKSF_031PREFIX     =  :PKSF-302COMPO-PREF
+128278            AND  PKSF_031BASIC      =  :PKSF-302COMPO-BASI
+128279            AND  PKSF_031SUFIX      =  :PKSF-302COMPO-SUFI
+128280            AND  PKND_031SEQ_NUM    =  :PKNI-302SEQ-NUM
+128281       WITH UR
+128282     END-EXEC.
+128283
+128284     IF  SQLCODE  NOT EQUAL  ZEROS  AND  +100
+128285         MOVE '3300-00-ACESSA-FZ031V00'   TO WAB-PARAGRAFO
+128286         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ031V00'
+128287                                          TO WAB-OBS
+128288         DISPLAY '* PROBLEMA NO ACESSO DB2 - SELECT FZ030V00 *'   04200000
+128289         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+128290         DISPLAY '* PKSF-302MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128291         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128292         DISPLAY '* PKSF-302COMPO-PREF = ' PKSF-302COMPO-PREF
+128293         DISPLAY '* PKSF-302COMPO-BASI = ' PKSF-302COMPO-BASI
+128294         DISPLAY '* PKSF-302COMPO-SUFI = ' PKSF-302COMPO-SUFI
+128295         DISPLAY '* PKSF-031VIN        = ' FKSF-030VIN-KEY
+128296         DISPLAY '* PKND-031SEQ-NUM    = ' PKNI-302SEQ-NUM
+128297         GO   TO 9999-00-ABENDA
+128298     END-IF.
+128299
+128300     IF  SQLCODE  EQUAL  ZEROS
+128301         MOVE  ATND-031LEGAL-ENT    TO   WS-LEGAL-ENT
+128302         MOVE  ATND-031PART-USAGE   TO   WS-PART-USAGE
+128303         MOVE  ATDT-030OFFL-COST    TO   WS-LEGAL-ENT-DT
+128304         MOVE  ATSF-031SFROM-CTRY   TO   WS-FROM-CTRY
+128305         ADD  +1                    TO   WAC-LID-FZ031V
+128306     ELSE
+128307         MOVE  ZEROS                TO   WS-LEGAL-ENT
+128308         MOVE  ZEROS                TO   WS-PART-USAGE
+128309         MOVE  SPACES               TO   WS-LEGAL-ENT-DT
+128310         MOVE  SPACES               TO   WS-FROM-CTRY
+128311     END-IF.
+128312
+128313
+128314 3300-99-EXIT. EXIT.
+128315*----------------------------------------------------------------*
+128316
+128317*----------------------------------------------------------------*
+128318 3400-00-ACESSA-FZ301V00      SECTION.
+128319*------------------------------------*
+128320
+128321     INITIALIZE   DCLPAIC301V-FCI.
+128322
+128323     EXEC SQL                                                     04020000
+128324          SELECT    PKSF_301CNPJ
+128325                  , PKSF_301MERCADORIA
+128326                  , PKDT_301REFERENCIA
+128327                  , PKNI_301DIVCODE
+128328                  , ATND_301VLSAIDAINT
+128329                  , ATND_301VLPARCELA
+128330                  , ATND_301CI
+128331                  , ATNI_301NCM
+128332                  , ATSV_301MERCADORIA
+128333                  , ATSF_301STATUS
+128334                  , ATDT_301VALID_HASH
+128335                  , ATND_301PREVIA_FCI
+128336          INTO     :PKSF-301CNPJ
+128337                  ,:PKSF-301MERCADORIA
+128338                  ,:PKDT-301REFERENCIA
+128339                  ,:PKNI-301DIVCODE
+128340                  ,:ATND-301VLSAIDAINT
+128341                  ,:ATND-301VLPARCELA
+128342                  ,:ATND-301CI
+128343                  ,:ATNI-301NCM
+128344                  ,:ATSV-301MERCADORIA
+128345                  ,:ATSF-301STATUS
+128346                  ,:ATDT-301VALID-HASH
+128347                     :ATDT-301VALID-HASH-NN
+128348                  ,:ATND-301PREVIA-FCI
+128349          FROM    AXG0200.PAIC301V_FCI
+128350          WHERE   PKSF_301CNPJ        =  :PKSF-302CNPJ
+128351            AND   PKSF_301MERCADORIA  =  :PKSF-302MERCADORIA
+128352            AND   PKNI_301DIVCODE     =  :PKNI-302DIVCODE
+128353            AND   PKDT_301REFERENCIA  =
+128354             (SELECT   MAX(PKDT_301REFERENCIA)
+128355              FROM   AXG0200.PAIC301V_FCI
+128356              WHERE  PKSF_301CNPJ        = :PKSF-302CNPJ
+128357               AND   PKSF_301MERCADORIA  = :PKSF-302MERCADORIA
+128358               AND   PKNI_301DIVCODE     = :PKNI-302DIVCODE
+128359               AND   PKDT_301REFERENCIA <= :PKDT-302REFERENCIA)
+128360       WITH UR
+128361     END-EXEC.
+128362
+128363     IF  SQLCODE  NOT EQUAL  ZEROS
+128364         MOVE '3400-00-ACESSA-FZ301V00'   TO WAB-PARAGRAFO
+128365         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ301V00'
+128366                                          TO WAB-OBS
+128367         DISPLAY '* PROBLEMA NO ACESSO DB2 - SELECT FZ301V00 *'   04200000
+128368         DISPLAY '* PKSF-301CNPJ       = ' PKSF-302CNPJ           04200000
+128369         DISPLAY '* PKSF-301MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128370         DISPLAY '* PKDT-301REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128371         DISPLAY '* PKNI-301DIVCODE    = ' PKNI-302DIVCODE        04200000
+128372         GO   TO 9999-00-ABENDA
+128373     END-IF.
+128374
+128375     ADD  +1                    TO   WAC-LID-FZ301V-FCI
+128376
+128377     IF  ATDT-301VALID-HASH-NN  LESS ZEROS
+128378         MOVE  SPACES           TO    ATDT-301VALID-HASH
+128379     END-IF.
+128380
+128381*--------------   ACESSA DADOS DA PREVIA DO FCI  -----------------
+128382
+128383 3400-10-ACESSA-FZ301V00.
+128384
+128385     EXEC SQL                                                     04020000
+128386          SELECT    ATND_301VLSAIDAINT
+128387                  , ATND_301VLPARCELA
+128388                  , ATND_301PREVIA_FCI
+128389          INTO     :WS-301VLSAIDAINT-PREV
+128390                  ,:WS-301VLPARCELA-PREV
+128391                  ,:WS-301PREVIA-FCI-PREV
+128392          FROM    AXG0200.PAIC301V_FCI
+128393          WHERE   PKSF_301CNPJ        =  :PKSF-302CNPJ
+128394            AND   PKSF_301MERCADORIA  =  :PKSF-302MERCADORIA
+128395            AND   PKDT_301REFERENCIA  =  :PKDT-302REFERENCIA
+128396            AND   PKNI_301DIVCODE     =  88
+128397       WITH UR
+128398     END-EXEC.
+128399
+128400     IF  SQLCODE  NOT EQUAL  ZEROS
+128401         MOVE '3400-10-ACESSA-FZ301V00'   TO WAB-PARAGRAFO
+128402         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ301V00'
+128403                                          TO WAB-OBS
+128404         DISPLAY '* PROBLEMA NO ACESSO DB2 - SELECT FZ301V00 *'   04200000
+128405         DISPLAY '* PKSF-301CNPJ       = ' PKSF-302CNPJ           04200000
+128406         DISPLAY '* PKSF-301MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128407         DISPLAY '* PKDT-301REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128408         DISPLAY '* PKNI-301DIVCODE    = ' '88'                   04200000
+128409         GO   TO 9999-00-ABENDA
+128410     END-IF.
+128411
+128412     ADD  +1                    TO   WAC-LID-FZ301V-PREVIA.
+128413
+128414
+128415 3400-99-EXIT. EXIT.
+128416*----------------------------------------------------------------*
+128417
+128418*----------------------------------------------------------------*
+128419 3500-00-SUM-FZ302V00         SECTION.
+128420*------------------------------------*
+128421
+128422     IF  PKDT-301REFERENCIA   EQUAL  PKDT-302REFERENCIA
+128423         MOVE  ATND-301VLSAIDAINT   TO   WS-ATND-303VLRMEDIO
+128424         MOVE  ATND-301VLPARCELA    TO   WS-VLPARC-CALC
+128425         MOVE  ATND-301CI           TO   WS-CI-CALC
+128426         GO    TO   3500-99-EXIT
+128427     END-IF.
+128428
+128429     EXEC SQL                                                     04020000
+128430          SELECT   SUM(ATND_302VLR_PARIMP)
+128431          INTO    :WS-VLPARC-CALC
+128432                     :WS-VLPARC-CALC-NN
+128433          FROM   AXG0200.PAIC302V_HESTRUTUR
+128434          WHERE
+128435                PKDT_302REFERENCIA    =  :PKDT-302REFERENCIA
+128436           AND  PKSF_302CNPJ          =  :PKSF-302CNPJ
+128437           AND  PKNI_302DIVCODE       =  :PKNI-302DIVCODE
+128438           AND  PKSF_302MERCADORIA    =  :PKSF-302MERCADORIA
+128439          WITH UR
+128440     END-EXEC.
+128441
+128442     IF  SQLCODE  NOT EQUAL  ZEROS
+128443         MOVE '3500-00-SUM-FZ302V00   '   TO WAB-PARAGRAFO
+128444         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ302V00'
+128445                                          TO WAB-OBS
+128446         DISPLAY '* PROBLEMA NO ACESSO DB2 - SELECT FZ302V00 *'   04200000
+128447         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+128448         DISPLAY '* PKSF-302MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128449         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128450         DISPLAY '* PKNI-302DIVCODE    = ' PKNI-302DIVCODE        04200000
+128451         GO   TO 9999-00-ABENDA
+128452     END-IF.
+128453
+128454     COMPUTE   WS-CI-CALC  ROUNDED   =
+128455                (WS-VLPARC-CALC  /  WS-ATND-303VLRMEDIO) * 100.
+128456
+128457 3500-99-EXIT. EXIT.
+128458*----------------------------------------------------------------*
+128459
+128460*---------------------------------------------------------------* 00050000
+128461 4000-00-TRATA-NFS-SAIDA      SECTION.                            05370000
+128462*------------------------------------*                            00050000
+128463
+128464     MOVE SPACES                 TO WCH-FIM-CSR303.
+128465
+128466     MOVE 'N'                    TO WS-EXISTE-NFS-SAIDA.
+128467
+128468     PERFORM 4100-00-CSR303-OPEN.
+128469
+128470     PERFORM 4300-00-CSR303-FETCH.
+128471
+128472     PERFORM 4400-00-PROCESSA-CSR303 UNTIL
+128473                        WCH-FIM-CSR303   EQUAL  'F'.
+128474
+128475     PERFORM 4200-00-CSR303-CLOSE.
+128476
+128477     IF  WS-EXISTE-NFS-SAIDA  EQUAL  'S'
+128478         GO   TO   4000-99-EXIT
+128479     END-IF.
+128480
+128481     MOVE PKSF-302CNPJ             TO WAS3D2-CNPJ
+128482     MOVE PKSF-302MERCADORIA       TO WAS3D2-MERCADORIA
+128483     MOVE PKDT-302REFERENCIA       TO WAS3D2-REFERENCIA
+128484
+128485     MOVE '****  CATALOGO SEM FATURAMENTO  ****'
+128486                                   TO WAS3D-OBSERVACAO
+128487
+128488     WRITE AS3NFSAI-REG         FROM WAS3D2-G.
+128489     ADD  +1                    TO   WAC-GRV-AS3.
+128490
+128491
+128492 4000-99-EXIT. EXIT.
+128493*----------------------------------------------------------------*
+128494
+128495*----------------------------------------------------------------*
+128496 4100-00-CSR303-OPEN          SECTION.
+128497*------------------------------------*
+128498
+128499     EXEC SQL OPEN CSR303 END-EXEC.
+128500
+128501     IF  SQLCODE  NOT EQUAL ZEROS
+128502         MOVE '4100-00-CSR303-OPEN'       TO WAB-PARAGRAFO
+128503         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+128504         DISPLAY '* ERRO NO OPEN CSR CSR303               *'      04200000
+128505         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+128506         DISPLAY '* PKSF-302MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128507         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128508         GO   TO 9999-00-ABENDA
+128509     END-IF.
+128510
+128511 4100-99-EXIT. EXIT.
+128512*----------------------------------------------------------------*
+128513
+128514*----------------------------------------------------------------*
+128515 4200-00-CSR303-CLOSE         SECTION.
+128516*------------------------------------*
+128517
+128518     EXEC SQL CLOSE CSR303 END-EXEC.
+128519
+128520     IF  SQLCODE  NOT EQUAL ZEROS
+128521         MOVE '4200-00-CSR303-CLOSE'      TO WAB-PARAGRAFO
+128522         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+128523         DISPLAY '* ERRO NO CLOSE CSR CSR303              *'      04200000
+128524         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+128525         DISPLAY '* PKSF-302MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128526         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128527         GO   TO 9999-00-ABENDA
+128528     END-IF.
+128529
+128530 4200-99-EXIT. EXIT.
+128531*----------------------------------------------------------------*
+128532
+128533*----------------------------------------------------------------*
+128534 4300-00-CSR303-FETCH         SECTION.
+128535*------------------------------------*
+128536
+128537     EXEC SQL
+128538      FETCH CSR303
+128539       INTO        :PKNI-303INVOICENO
+128540                  ,:PKSF-303SERIE
+128541                  ,:FKSF-303VIN
+128542                  ,:FKSF-303CLAFISCODE
+128543                  ,:ATSF-303MKTDESCR
+128544                  ,:FKSF-303SALESMODAL
+128545                  ,:FKSF-303STATECODE
+128546                  ,:FKSF-303INVOILOCAL
+128547                  ,:FKSF-303BUILDLOCAL
+128548                  ,:ATDT-303ISSUEDT
+128549                  ,:ATND-303INVOICEVAL
+128550                  ,:ATND-303ICMSVAL
+128551                  ,:ATND-303IPIVAL
+128552                  ,:ATND-303ICMSSVAL
+128553                  ,:ATND-303PISSVAL
+128554                  ,:ATND-303FINSVAL
+128555     END-EXEC.
+128556
+128557     IF  SQLCODE  NOT EQUAL ZEROS AND +100
+128558         MOVE '4300-00-CSR303-FETCH'      TO WAB-PARAGRAFO
+128559         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+128560         DISPLAY '* ERRO NO FETCH CSR CSR303              *'      04200000
+128561         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+128562         DISPLAY '* PKSF-302MERCADORIA = ' PKSF-302MERCADORIA     04200000
+128563         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+128564         GO   TO 9999-00-ABENDA
+128565     END-IF.
+128566
+128567     IF  SQLCODE  EQUAL +100
+128568         MOVE 'F'                TO WCH-FIM-CSR303
+128569     ELSE
+128570         ADD  +1                 TO WAC-LID-CSR303
+128571         MOVE 'S'                TO WS-EXISTE-NFS-SAIDA
+128572     END-IF.
+128573
+128574
+128575 4300-99-EXIT. EXIT.
+128576*----------------------------------------------------------------*
+128577
+128578*----------------------------------------------------------------*
+128579 4400-00-PROCESSA-CSR303      SECTION.
+128580*------------------------------------*
+128581
+128582     MOVE PKDT-302REFERENCIA       TO WAS3D-REFERENCIA
+128583     MOVE PKSF-302CNPJ             TO WAS3D-CNPJ
+128584     MOVE PKSF-302MERCADORIA       TO WAS3D-MERCADORIA
+128585     MOVE PKNI-303INVOICENO        TO WAS3D-INVOICENO
+128586     MOVE PKSF-303SERIE            TO WAS3D-SERIE
+128587     MOVE FKSF-303VIN              TO WAS3D-VIN
+128588     MOVE FKSF-303CLAFISCODE       TO WAS3D-CLAFISCODE
+128589     MOVE ATSF-303MKTDESCR         TO WAS3D-MKTDESCR
+128590     MOVE FKSF-303SALESMODAL       TO WAS3D-SALESMODAL
+128591     MOVE FKSF-303STATECODE        TO WAS3D-STATECODE
+128592     MOVE FKSF-303INVOILOCAL       TO WAS3D-INVOILOCAL
+128593     MOVE FKSF-303BUILDLOCAL       TO WAS3D-BUILDLOCAL
+128594     MOVE ATDT-303ISSUEDT          TO WAS3D-ISSUEDT
+128595     MOVE ATND-303INVOICEVAL       TO WAS3D-INVOICEVAL
+128596     MOVE ATND-303ICMSVAL          TO WAS3D-ICMSVAL
+128597     MOVE ATND-303IPIVAL           TO WAS3D-IPIVAL
+128598     MOVE ATND-303ICMSSVAL         TO WAS3D-ICMSSVAL
+128599     MOVE ATND-303PISSVAL          TO WAS3D-PISSVAL
+128600     MOVE ATND-303FINSVAL          TO WAS3D-FINSVAL
+128601
+128602     WRITE AS3NFSAI-REG          FROM WAS3D-G.
+128603     ADD  +1                     TO WAC-GRV-AS3.
+128604
+128605     PERFORM 4300-00-CSR303-FETCH.
+128606
+128607 4400-99-EXIT. EXIT.
+128608*----------------------------------------------------------------*
+128609
+128610*---------------------------------------------------------------* 00050000
+128611 5000-00-TRATA-NFS-ENTRADA    SECTION.                            05370000
+128612*------------------------------------*                            00050000
+128613
+128614     INITIALIZE  DCLPAIC101V-PERIMPBAS
+128615
+128616     IF  FKSF-302ESTRU-DIRE  NOT  EQUAL  SPACES  OR
+128617         ATND-302VLR-PARIMP       EQUAL  ZEROS
+128618         GO   TO  5000-99-EXIT
+128619     END-IF.
+128620
+128621     MOVE     'N'      TO     WS-ACHOU-FZ101V.
+128622
+128623     PERFORM  5100-00-FZ101V-MENOS-2MES.
+128624
+128625     IF  WS-ACHOU-FZ101V  EQUAL  'N'
+128626         PERFORM  5200-00-FZ101V-MENOS-3MES
+128627     END-IF
+128628
+128629     IF  WS-ACHOU-FZ101V  EQUAL  'N'
+128630         PERFORM  5300-00-FZ101V-MENOS-1MES
+128631     END-IF
+128632
+128633     IF  WS-ACHOU-FZ101V  EQUAL  'S'
+128634         PERFORM  5400-00-TRATA-NFENT-VSAM
+128635     END-IF.
+128636
+128637
+128638 5000-99-EXIT. EXIT.
+128639*----------------------------------------------------------------*
+128640
+128641*---------------------------------------------------------------* 00050000
+128642 5100-00-FZ101V-MENOS-2MES    SECTION.                            05370000
+128643*------------------------------------*                            00050000
+128644
+128645     EXEC SQL                                                     04890000
+128646        SET :WS-DATA-REF  = DATE(:PKDT-302REFERENCIA) - 2 MONTH   04900000
+128647     END-EXEC                                                     04910000
+128648
+128649     MOVE  WS-DATA-REF(4:2)  TO  WS-MES-REF
+128650     MOVE  WS-DATA-REF(7:4)  TO  WS-ANO-REF
+128651
+128652     EXEC SQL
+128653       SELECT  PKSF_101CNPJ
+128654              ,PKSF_101PREFIX_ENG
+128655              ,PKSF_101BASICO_ENG
+128656              ,PKSF_101SUFIXO_ENG
+128657              ,PKDT_101REFERENCIA
+128658              ,ATTM_101REFER_TIME
+128659              ,ATSF_101UNIDPECA
+128660              ,FKSF_101CODPECA
+128661              ,ATND_101PERC_IMP
+128662              ,FKSF_101USER_RESP
+128663              ,ATNI_101NUM_REF
+128664              ,ATND_101VLR_IMP
+128665              ,ATSF_101NCM
+128666         INTO :PKSF-101CNPJ
+128667             ,:PKSF-101PREFIX-ENG
+128668             ,:PKSF-101BASICO-ENG
+128669             ,:PKSF-101SUFIXO-ENG
+128670             ,:PKDT-101REFERENCIA
+128671             ,:ATTM-101REFER-TIME
+128672             ,:ATSF-101UNIDPECA
+128673             ,:FKSF-101CODPECA
+128674             ,:ATND-101PERC-IMP
+128675             ,:FKSF-101USER-RESP
+128676             ,:ATNI-101NUM-REF
+128677             ,:ATND-101VLR-IMP
+128678             ,:ATSF-101NCM
+128679         FROM  AXG0202.PAIC101V_PERIMPBAS
+128680        WHERE  PKSF_101CNPJ              =  :PKSF-302CNPJ
+128681          AND  PKSF_101PREFIX_ENG        =  :PKSF-302COMPO-PREF
+128682          AND  PKSF_101BASICO_ENG        =  :PKSF-302COMPO-BASI
+128683          AND  PKSF_101SUFIXO_ENG        =  :PKSF-302COMPO-SUFI
+128684          AND  MONTH(PKDT_101REFERENCIA) =  :WS-MES-REF
+128685          AND  YEAR(PKDT_101REFERENCIA)  =  :WS-ANO-REF
+128686          AND  PKDT_101REFERENCIA  =
+128687               (SELECT  MAX(PKDT_101REFERENCIA)
+128688                  FROM  AXG0202.PAIC101V_PERIMPBAS
+128689                 WHERE  PKSF_101CNPJ        = :PKSF-302CNPJ
+128690                   AND  PKSF_101PREFIX_ENG  = :PKSF-302COMPO-PREF
+128691                   AND  PKSF_101BASICO_ENG  = :PKSF-302COMPO-BASI
+128692                   AND  PKSF_101SUFIXO_ENG  = :PKSF-302COMPO-SUFI
+128693                   AND  MONTH(PKDT_101REFERENCIA) = :WS-MES-REF
+128694                   AND  YEAR(PKDT_101REFERENCIA)  = :WS-ANO-REF)
+128695       WITH UR
+128696     END-EXEC.
+128697
+128698     IF  SQLCODE NOT =  0000   AND  +100                          05420000
+128699         MOVE '5100-00-FZ101V-MENOS-2MES' TO WAB-PARAGRAFO
+128700         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+128701         DISPLAY '* ERRO NO SELECT FZ101V00               *'      04200000
+128702         DISPLAY '* PKSF-302CNPJ        = ' PKSF-302CNPJ          04200000
+128703         DISPLAY '* PKSF-302MERCADORIA  = ' PKSF-302MERCADORIA    04200000
+128704         DISPLAY '* PKDT-302REFERENCIA  = ' PKDT-302REFERENCIA    04200000
+128705         DISPLAY '* PKSF-101PREFIX_ENG  = ' PKSF-302COMPO-PREF
+128706         DISPLAY '* PKSF-101BASICO_ENG  = ' PKSF-302COMPO-BASI
+128707         DISPLAY '* PKSF-101SUFIXO_ENG  = ' PKSF-302COMPO-SUFI
+128708         DISPLAY '* MES (PKDT_101REFER) = ' WS-MES-REF
+128709         DISPLAY '* ANO (PKDT_101REFER) = ' WS-ANO-REF
+128710         GO   TO 9999-00-ABENDA
+128711     END-IF.
+128712
+128713     IF  SQLCODE  =  0000                                         05420000
+128714         ADD  +1       TO     WAC-LID-FZ101V
+128715         MOVE 'S'      TO     WS-ACHOU-FZ101V
+128716     END-IF.
+128717
+128718
+128719 5100-99-EXIT. EXIT.
+128720*---------------------------------------------------------------* 00050000
+128721*                                                                 04810000
+128722*---------------------------------------------------------------* 00050000
+128723 5200-00-FZ101V-MENOS-3MES    SECTION.                            05370000
+128724*------------------------------------*                            00050000
+128725
+128726     EXEC SQL                                                     04890000
+128727        SET :WS-DATA-REF  = DATE(:PKDT-302REFERENCIA) - 3 MONTH   04900000
+128728     END-EXEC                                                     04910000
+128729
+128730     MOVE  WS-DATA-REF(4:2)  TO  WS-MES-REF
+128731     MOVE  WS-DATA-REF(7:4)  TO  WS-ANO-REF
+128732
+128733     EXEC SQL
+128734       SELECT  PKSF_101CNPJ
+128735              ,PKSF_101PREFIX_ENG
+128736              ,PKSF_101BASICO_ENG
+128737              ,PKSF_101SUFIXO_ENG
+128738              ,PKDT_101REFERENCIA
+128739              ,ATTM_101REFER_TIME
+128740              ,ATSF_101UNIDPECA
+128741              ,FKSF_101CODPECA
+128742              ,ATND_101PERC_IMP
+128743              ,FKSF_101USER_RESP
+128744              ,ATNI_101NUM_REF
+128745              ,ATND_101VLR_IMP
+128746              ,ATSF_101NCM
+128747         INTO :PKSF-101CNPJ
+128748             ,:PKSF-101PREFIX-ENG
+128749             ,:PKSF-101BASICO-ENG
+128750             ,:PKSF-101SUFIXO-ENG
+128751             ,:PKDT-101REFERENCIA
+128752             ,:ATTM-101REFER-TIME
+128753             ,:ATSF-101UNIDPECA
+128754             ,:FKSF-101CODPECA
+128755             ,:ATND-101PERC-IMP
+128756             ,:FKSF-101USER-RESP
+128757             ,:ATNI-101NUM-REF
+128758             ,:ATND-101VLR-IMP
+128759             ,:ATSF-101NCM
+128760         FROM  AXG0202.PAIC101V_PERIMPBAS
+128761        WHERE  PKSF_101CNPJ              =  :PKSF-302CNPJ
+128762          AND  PKSF_101PREFIX_ENG        =  :PKSF-302COMPO-PREF
+128763          AND  PKSF_101BASICO_ENG        =  :PKSF-302COMPO-BASI
+128764          AND  PKSF_101SUFIXO_ENG        =  :PKSF-302COMPO-SUFI
+128765          AND  MONTH(PKDT_101REFERENCIA) =  :WS-MES-REF
+128766          AND  YEAR(PKDT_101REFERENCIA)  =  :WS-ANO-REF
+128767          AND  PKDT_101REFERENCIA  =
+128768               (SELECT  MAX(PKDT_101REFERENCIA)
+128769                  FROM  AXG0202.PAIC101V_PERIMPBAS
+128770                 WHERE  PKSF_101CNPJ        = :PKSF-302CNPJ
+128771                   AND  PKSF_101PREFIX_ENG  = :PKSF-302COMPO-PREF
+128772                   AND  PKSF_101BASICO_ENG  = :PKSF-302COMPO-BASI
+128773                   AND  PKSF_101SUFIXO_ENG  = :PKSF-302COMPO-SUFI
+128774                   AND  MONTH(PKDT_101REFERENCIA) = :WS-MES-REF
+128775                   AND  YEAR(PKDT_101REFERENCIA)  = :WS-ANO-REF)
+128776       WITH UR
+128777     END-EXEC.
+128778
+128779     IF  SQLCODE NOT =  0000   AND  +100                          05420000
+128780         MOVE '5200-00-FZ101V-MENOS-3MES' TO WAB-PARAGRAFO
+128781         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+128782         DISPLAY '* ERRO NO SELECT FZ101V00               *'      04200000
+128783         DISPLAY '* PKSF-302CNPJ        = ' PKSF-302CNPJ          04200000
+128784         DISPLAY '* PKSF-302MERCADORIA  = ' PKSF-302MERCADORIA    04200000
+128785         DISPLAY '* PKDT-302REFERENCIA  = ' PKDT-302REFERENCIA    04200000
+128786         DISPLAY '* PKSF-101PREFIX_ENG  = ' PKSF-302COMPO-PREF
+128787         DISPLAY '* PKSF-101BASICO_ENG  = ' PKSF-302COMPO-BASI
+128788         DISPLAY '* PKSF-101SUFIXO_ENG  = ' PKSF-302COMPO-SUFI
+128789         DISPLAY '* MES (PKDT_101REFER) = ' WS-MES-REF
+128790         DISPLAY '* ANO (PKDT_101REFER) = ' WS-ANO-REF
+128791         GO   TO 9999-00-ABENDA
+128792     END-IF.
+128793
+128794     IF  SQLCODE  =  0000                                         05420000
+128795         ADD  +1       TO     WAC-LID-FZ101V
+128796         MOVE 'S'      TO     WS-ACHOU-FZ101V
+128797     END-IF.
+128798
+128799
+128800 5200-99-EXIT. EXIT.
+128801*---------------------------------------------------------------* 00050000
+128802*                                                                 04810000
+128803*---------------------------------------------------------------* 00050000
+128804 5300-00-FZ101V-MENOS-1MES    SECTION.                            05370000
+128805*------------------------------------*                            00050000
+128806
+128807     EXEC SQL                                                     04890000
+128808        SET :WS-DATA-REF  = DATE(:PKDT-302REFERENCIA) - 1 MONTH   04900000
+128809     END-EXEC                                                     04910000
+128810
+128811     MOVE  WS-DATA-REF(4:2)  TO  WS-MES-REF
+128812     MOVE  WS-DATA-REF(7:4)  TO  WS-ANO-REF
+128813
+128814
+128815     EXEC SQL
+128816       SELECT  PKSF_101CNPJ
+128817              ,PKSF_101PREFIX_ENG
+128818              ,PKSF_101BASICO_ENG
+128819              ,PKSF_101SUFIXO_ENG
+128820              ,PKDT_101REFERENCIA
+128821              ,ATTM_101REFER_TIME
+128822              ,ATSF_101UNIDPECA
+128823              ,FKSF_101CODPECA
+128824              ,ATND_101PERC_IMP
+128825              ,FKSF_101USER_RESP
+128826              ,ATNI_101NUM_REF
+128827              ,ATND_101VLR_IMP
+128828              ,ATSF_101NCM
+128829         INTO :PKSF-101CNPJ
+128830             ,:PKSF-101PREFIX-ENG
+128831             ,:PKSF-101BASICO-ENG
+128832             ,:PKSF-101SUFIXO-ENG
+128833             ,:PKDT-101REFERENCIA
+128834             ,:ATTM-101REFER-TIME
+128835             ,:ATSF-101UNIDPECA
+128836             ,:FKSF-101CODPECA
+128837             ,:ATND-101PERC-IMP
+128838             ,:FKSF-101USER-RESP
+128839             ,:ATNI-101NUM-REF
+128840             ,:ATND-101VLR-IMP
+128841             ,:ATSF-101NCM
+128842         FROM  AXG0202.PAIC101V_PERIMPBAS
+128843        WHERE  PKSF_101CNPJ              =  :PKSF-302CNPJ
+128844          AND  PKSF_101PREFIX_ENG        =  :PKSF-302COMPO-PREF
+128845          AND  PKSF_101BASICO_ENG        =  :PKSF-302COMPO-BASI
+128846          AND  PKSF_101SUFIXO_ENG        =  :PKSF-302COMPO-SUFI
+128847          AND  MONTH(PKDT_101REFERENCIA) =  :WS-MES-REF
+128848          AND  YEAR(PKDT_101REFERENCIA)  =  :WS-ANO-REF
+128849          AND  PKDT_101REFERENCIA  =
+128850               (SELECT  MAX(PKDT_101REFERENCIA)
+128851                  FROM  AXG0202.PAIC101V_PERIMPBAS
+128852                 WHERE  PKSF_101CNPJ        = :PKSF-302CNPJ
+128853                   AND  PKSF_101PREFIX_ENG  = :PKSF-302COMPO-PREF
+128854                   AND  PKSF_101BASICO_ENG  = :PKSF-302COMPO-BASI
+128855                   AND  PKSF_101SUFIXO_ENG  = :PKSF-302COMPO-SUFI
+128856                   AND  MONTH(PKDT_101REFERENCIA) = :WS-MES-REF
+128857                   AND  YEAR(PKDT_101REFERENCIA)  = :WS-ANO-REF)
+128858       WITH UR
+128859     END-EXEC.
+128860
+128861     IF  SQLCODE NOT =  0000   AND  +100                          05420000
+128862         MOVE '5300-00-FZ101V-MENOS-1MES' TO WAB-PARAGRAFO
+128863         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+128864         DISPLAY '* ERRO NO SELECT FZ101V00               *'      04200000
+128865         DISPLAY '* PKSF-302CNPJ        = ' PKSF-302CNPJ          04200000
+128866         DISPLAY '* PKSF-302MERCADORIA  = ' PKSF-302MERCADORIA    04200000
+128867         DISPLAY '* PKDT-302REFERENCIA  = ' PKDT-302REFERENCIA    04200000
+128868         DISPLAY '* PKSF-101PREFIX_ENG  = ' PKSF-302COMPO-PREF
+128869         DISPLAY '* PKSF-101BASICO_ENG  = ' PKSF-302COMPO-BASI
+128870         DISPLAY '* PKSF-101SUFIXO_ENG  = ' PKSF-302COMPO-SUFI
+128871         DISPLAY '* MES (PKDT_101REFER) = ' WS-MES-REF
+128872         DISPLAY '* ANO (PKDT_101REFER) = ' WS-ANO-REF
+128873         GO   TO 9999-00-ABENDA
+128874     END-IF.
+128875
+128876     IF  SQLCODE  =  0000                                         05420000
+128877         ADD  +1       TO     WAC-LID-FZ101V
+128878         MOVE 'S'      TO     WS-ACHOU-FZ101V
+128879     END-IF.
+128880
+128881
+128882 5300-99-EXIT. EXIT.
+128883*---------------------------------------------------------------* 00050000
+128884
+128885*----------------------------------------------------------------*
+128886 5400-00-TRATA-NFENT-VSAM     SECTION.
+128887*------------------------------------*
+128888
+128889     MOVE  SPACES              TO   WS-ACHOU-NF-COMPON            02230012
+128890
+128891     INITIALIZE    WS-R894A-KEY.
+128892
+128893     MOVE  WS-DATA-REF (07:04)  TO  WS-R894-REFERENCIA (01:04)    12730012
+128894     MOVE  WS-DATA-REF (04:02)  TO  WS-R894-REFERENCIA (05:02)    12730012
+128895     MOVE  '01'                 TO  WS-R894-REFERENCIA (07:02)    12730012
+128896                                                                  02230012
+128897     MOVE  SPACES              TO   WS-ACHOU-MES                  02230012
+128898                                                                  02230012
+128899     PERFORM  5500-00-ACHA-DIA-VSAM
+128900
+128901     IF  WS-ACHOU-MES  EQUAL  SPACES
+128902         GO   TO    5400-30-SEGUE-NAO-ACHOU
+128903     END-IF
+128904
+128905     MOVE PKSF-101CNPJ         TO   WS-R894-CNPJ
+128906     MOVE PKSF-101PREFIX-ENG   TO   WS-R894-PREFIX-ENG
+128907     MOVE PKSF-101BASICO-ENG   TO   WS-R894-BASICO-ENG
+128908     MOVE PKSF-101SUFIXO-ENG   TO   WS-R894-SUFIXO-ENG
+128909     MOVE ZEROS                TO   WS-R894-NREF
+128910
+128911     PERFORM  5600-00-START-VSAM-NFENT
+128912
+128913     IF  WS-FS-EB1NFENT   EQUAL  '10'                             07050012
+128914         GO   TO    5400-30-SEGUE-NAO-ACHOU
+128915     END-IF                                                       05820012
+128916
+128917     MOVE    SPACES            TO   WCH-FIM-FZ894A
+128918
+128919     PERFORM   5700-00-LER-IMPRIME-NFENT
+128920                   UNTIL    WCH-FIM-FZ894A  =  'S'.
+128921
+128922     IF  WS-ACHOU-NF-COMPON   EQUAL  'S'                          02230012
+128923         GO   TO    5400-99-EXIT
+128924     END-IF.
+128925
+128926
+128927 5400-30-SEGUE-NAO-ACHOU.
+128928
+128929     MOVE PKDT-302REFERENCIA   TO   WAS2D2-REFERENCIA
+128930     MOVE PKSF-302CNPJ         TO   WAS2D2-CNPJ
+128931     MOVE PKSF-302MERCADORIA   TO   WAS2D2-MERCADORIA
+128932
+128933     MOVE PKDT-101REFERENCIA   TO   WAS2D2-REFER-NF
+128934     MOVE ATNI-101NUM-REF      TO   WAS2D2-NUM-REF
+128935     MOVE PKSF-101CNPJ         TO   WAS2D2-CNPJ-PLTA
+128936     MOVE PKSF-101PREFIX-ENG   TO   WAS2D2-PREFIXO
+128937     MOVE PKSF-101BASICO-ENG   TO   WAS2D2-BASICO
+128938     MOVE PKSF-101SUFIXO-ENG   TO   WAS2D2-SUFIXO
+128939
+128940     MOVE '***  NAO FORAM LOCALIZDAS N.FISCAIS PARA O ITEM ***'
+128941                               TO   WAS2D2-OBSERVACAO
+128942
+128943     WRITE AS2NFENT-REG      FROM   WAS2D2-G.
+128944
+128945     ADD  +1                   TO   WAC-GRV-AS2.
+128946
+128947 5400-99-EXIT. EXIT.
+128948*----------------------------------------------------------------*
+128949
+128950*----------------------------------------------------------------*
+128951 5500-00-ACHA-DIA-VSAM        SECTION.
+128952*------------------------------------*
+128953
+128954     MOVE    WS-R894A-KEY    TO  R894A-KEY.                       00430012
+128955                                                                  02230012
+128956     START  EB1NFENT                                              05770012
+128957                   KEY  >=  R894A-KEY.                            05770012
+128958                                                                  05390012
+128959     IF  WS-FS-EB1NFENT  NOT EQUAL  '00'  AND  '10'               07050012
+128960         MOVE '5500-00-ACHA-DIA-VSAM      '    TO WAB-PARAGRAFO
+128961         MOVE 'ERRO NO START VSAM EB1NFENT'    TO WAB-OBS
+128962         DISPLAY '* ERRO NO START VSAM EB1NFENT           *'      04200000
+128963         DISPLAY '* PKSF-302CNPJ        = ' PKSF-302CNPJ          04200000
+128964         DISPLAY '* PKSF-302MERCADORIA  = ' PKSF-302MERCADORIA    04200000
+128965         DISPLAY '* PKDT-302REFERENCIA  = ' PKDT-302REFERENCIA    04200000
+128966         DISPLAY '* PKSF-101PREFIX_ENG  = ' PKSF-302COMPO-PREF
+128967         DISPLAY '* PKSF-101BASICO_ENG  = ' PKSF-302COMPO-BASI
+128968         DISPLAY '* PKSF-101SUFIXO_ENG  = ' PKSF-302COMPO-SUFI
+128969         DISPLAY '* MES (PKDT_101REFER) = ' WS-MES-REF
+128970         DISPLAY '* ANO (PKDT_101REFER) = ' WS-ANO-REF
+128971         DISPLAY '* CHAVE VSAM          = ' WS-R894A-KEY
+128972         DISPLAY '* STATUS              = ' WS-FS-EB1NFENT
+128973         GO   TO 9999-00-ABENDA.
+128974                                                                  07050012
+128975     IF  WS-FS-EB1NFENT   EQUAL  '10'                             07050012
+128976         GO                       TO   5500-99-EXIT               05820012
+128977     END-IF                                                       05820012
+128978                                                                  07050012
+128979     READ   EB1NFENT  NEXT.                                       05770012
+128980                                                                  05390012
+128981     IF  WS-FS-EB1NFENT  NOT EQUAL  '00'  AND  '10'               07050012
+128982         MOVE '5500-00-ACHA-DIA-VSAM       '    TO WAB-PARAGRAFO
+128983         MOVE 'ERRO NO READ NEXT VSAM EB1NFENT' TO WAB-OBS
+128984         DISPLAY '* ERRO NO READ NEXT VSAM EB1NFENT       *'      04200000
+128985         DISPLAY '* PKSF-302CNPJ        = ' PKSF-302CNPJ          04200000
+128986         DISPLAY '* PKSF-302MERCADORIA  = ' PKSF-302MERCADORIA    04200000
+128987         DISPLAY '* PKDT-302REFERENCIA  = ' PKDT-302REFERENCIA    04200000
+128988         DISPLAY '* PKSF-101PREFIX_ENG  = ' PKSF-302COMPO-PREF
+128989         DISPLAY '* PKSF-101BASICO_ENG  = ' PKSF-302COMPO-BASI
+128990         DISPLAY '* PKSF-101SUFIXO_ENG  = ' PKSF-302COMPO-SUFI
+128991         DISPLAY '* MES (PKDT_101REFER) = ' WS-MES-REF
+128992         DISPLAY '* ANO (PKDT_101REFER) = ' WS-ANO-REF
+128993         DISPLAY '* CHAVE VSAM          = ' WS-R894A-KEY
+128994         DISPLAY '* STATUS              = ' WS-FS-EB1NFENT
+128995         GO   TO 9999-00-ABENDA.
+128996                                                                  07050012
+128997     IF  WS-FS-EB1NFENT   EQUAL  '10'                             07050012
+128998         GO                       TO   5500-99-EXIT               05820012
+128999     END-IF                                                       05820012
+129000                                                                  07050012
+129001     IF  R894-REFERENCIA(01:06)  =  WS-R894-REFERENCIA(01:06)     00430012
+129002         MOVE  'S'                   TO  WS-ACHOU-MES             05790012
+129003         MOVE R894-REFERENCIA(07:02) TO  WS-R894-REFERENCIA(07:02)00430012
+129004     END-IF.                                                      05820012
+129005
+129006
+129007 5500-99-EXIT. EXIT.
+129008*----------------------------------------------------------------*
+129009
+129010*----------------------------------------------------------------*
+129011 5600-00-START-VSAM-NFENT     SECTION.
+129012*------------------------------------*
+129013
+129014     MOVE    WS-R894A-KEY    TO  R894A-KEY.                       00430012
+129015                                                                  02230012
+129016     START  EB1NFENT                                              05770012
+129017                   KEY  >=  R894A-KEY.                            05770012
+129018                                                                  05390012
+129019     IF  WS-FS-EB1NFENT  NOT EQUAL  '00'  AND  '10'               07050012
+129020         MOVE '5600-00-START-VSAM-NFENT    '   TO WAB-PARAGRAFO
+129021         MOVE 'ERRO NO START VSAM EB1NFENT'    TO WAB-OBS
+129022         DISPLAY '* ERRO NO START VSAM EB1NFENT           *'      04200000
+129023         DISPLAY '* PKSF-302CNPJ        = ' PKSF-302CNPJ          04200000
+129024         DISPLAY '* PKSF-302MERCADORIA  = ' PKSF-302MERCADORIA    04200000
+129025         DISPLAY '* PKDT-302REFERENCIA  = ' PKDT-302REFERENCIA    04200000
+129026         DISPLAY '* PKSF-101PREFIX_ENG  = ' PKSF-302COMPO-PREF
+129027         DISPLAY '* PKSF-101BASICO_ENG  = ' PKSF-302COMPO-BASI
+129028         DISPLAY '* PKSF-101SUFIXO_ENG  = ' PKSF-302COMPO-SUFI
+129029         DISPLAY '* MES (PKDT_101REFER) = ' WS-MES-REF
+129030         DISPLAY '* ANO (PKDT_101REFER) = ' WS-ANO-REF
+129031         DISPLAY '* CHAVE VSAM          = ' WS-R894A-KEY
+129032         DISPLAY '* STATUS              = ' WS-FS-EB1NFENT
+129033         GO   TO 9999-00-ABENDA.
+129034
+129035
+129036 5600-99-EXIT. EXIT.
+129037*----------------------------------------------------------------*
+129038
+129039*----------------------------------------------------------------*
+129040 5700-00-LER-IMPRIME-NFENT    SECTION.
+129041*------------------------------------*
+129042
+129043     READ   EB1NFENT  NEXT.                                       05770012
+129044                                                                  05390012
+129045     IF  WS-FS-EB1NFENT  NOT EQUAL  '00'  AND  '10'               07050012
+129046         MOVE '5700-00-LER-IMPRIME-NFENT      ' TO WAB-PARAGRAFO
+129047         MOVE 'ERRO NO READ NEXT VSAM EB1NFENT' TO WAB-OBS
+129048         DISPLAY '* ERRO NO READ NEXT VSAM EB1NFENT       *'      04200000
+129049         DISPLAY '* PKSF-302CNPJ        = ' PKSF-302CNPJ          04200000
+129050         DISPLAY '* PKSF-302MERCADORIA  = ' PKSF-302MERCADORIA    04200000
+129051         DISPLAY '* PKDT-302REFERENCIA  = ' PKDT-302REFERENCIA    04200000
+129052         DISPLAY '* PKSF-101PREFIX_ENG  = ' PKSF-302COMPO-PREF
+129053         DISPLAY '* PKSF-101BASICO_ENG  = ' PKSF-302COMPO-BASI
+129054         DISPLAY '* PKSF-101SUFIXO_ENG  = ' PKSF-302COMPO-SUFI
+129055         DISPLAY '* MES (PKDT_101REFER) = ' WS-MES-REF
+129056         DISPLAY '* ANO (PKDT_101REFER) = ' WS-ANO-REF
+129057         DISPLAY '* CHAVE VSAM          = ' WS-R894A-KEY
+129058         DISPLAY '* STATUS              = ' WS-FS-EB1NFENT
+129059         GO   TO 9999-00-ABENDA.
+129060                                                                  07050012
+129061     IF  WS-FS-EB1NFENT   EQUAL  '10'                             07050012
+129062         GO                       TO   5700-99-EXIT               05820012
+129063     END-IF                                                       05820012
+129064                                                                  07050012
+129065     IF  R894A-KEY(01:46)   NOT  =  WS-R894A-KEY(01:46)           00430012
+129066         MOVE  'S'                   TO  WCH-FIM-FZ894A           05790012
+129067         GO   TO    5700-99-EXIT                                  00430012
+129068     END-IF                                                       05820012
+129069
+129070     MOVE   'S'                     TO  WS-ACHOU-NF-COMPON
+129071
+129072     MOVE  PKDT-302REFERENCIA       TO  WAS2D-REFERENCIA
+129073     MOVE  PKSF-302CNPJ             TO  WAS2D-CNPJ
+129074     MOVE  PKSF-302MERCADORIA       TO  WAS2D-MERCADORIA
+129075
+129076     MOVE  R894-REFERENCIA (01:04)  TO  WAS2D-REFER-NF(07:04)     12730012
+129077     MOVE  R894-REFERENCIA (05:02)  TO  WAS2D-REFER-NF(04:02)     12730012
+129078     MOVE  R894-REFERENCIA (07:02)  TO  WAS2D-REFER-NF(01:02)     12730012
+129079     MOVE  '.'                      TO  WAS2D-REFER-NF(03:01)     12730012
+129080     MOVE  '.'                      TO  WAS2D-REFER-NF(06:01)     12730012
+129081
+129082     MOVE  R894-DADOS               TO  WAS2D-GERAL               00430012
+129083     WRITE AS2NFENT-REG           FROM  WAS2D-G
+129084
+129085     ADD  +1                        TO  WAC-GRV-AS2.
+129086
+129087
+129088 5700-99-EXIT. EXIT.
+129089*----------------------------------------------------------------*
+129090
+129091*                                                                 04810000
+129092*----------------------------------------------------------------*
+129093 8000-00-TRATA-CONJUNTO       SECTION.
+129094*------------------------------------*
+129095
+129096     IF  PKDT-302REFERENCIA    EQUAL  WS-REFERENCIA-ANT
+129097         GO   TO    8000-05-CHECA-CNPJ
+129098     END-IF
+129099
+129100     MOVE  PKDT-302REFERENCIA  TO   WS-REFERENCIA-ANT
+129101
+129102     PERFORM  8400-00-OBTEM-DATAS.
+129103
+129104 8000-05-CHECA-CNPJ.
+129105
+129106     IF  PKSF-302CNPJ    EQUAL  WS-CNPJ-ANT
+129107         GO   TO    8000-10-TRATA-COMPONENTE
+129108     END-IF
+129109
+129110     MOVE  PKSF-302CNPJ        TO   WS-CNPJ-ANT
+129111
+129112     MOVE   0     TO      IX2.
+129113
+129114     PERFORM  UNTIL  IX2  GREATER  IX1
+129115         ADD  1     TO      IX2
+129116         IF   WS-PFAB-CNPJ (IX2)  EQUAL  PKSF-302CNPJ
+129117              MOVE  WS-PFAB-GSDB (IX2)  TO  WS-GSDB
+129118              MOVE  60                  TO  IX2
+129119         END-IF
+129120     END-PERFORM
+129121
+129122     IF  IX2  NOT  EQUAL  60
+129123         MOVE ZEROS    TO    SQLCODE
+129124         MOVE '8000-00-TRATA-CONJUNTO'    TO WAB-PARAGRAFO
+129125         MOVE 'CNPJ NAO LOCALIZADO NO PARAM RECB/PFAB - CS050V'
+129126                                          TO WAB-OBS
+129127         DISPLAY '* GSDB NAO LOCALIZADO NO PARAM RECB/PFAB *'     04200000
+129128         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+129129         DISPLAY '* PKSF-302ESTRU-PREF = ' PKSF-302ESTRU-PREF     04200000
+129130         DISPLAY '* PKSF-302ESTRU-BASI = ' PKSF-302ESTRU-BASI     04200000
+129131         DISPLAY '* PKSF-302ESTRU-SUFI = ' PKSF-302ESTRU-SUFI     04200000
+129132         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+129133         DISPLAY '* PKSF-302COMPO-PREF = ' PKSF-302COMPO-PREF
+129134         DISPLAY '* PKSF-302COMPO-BASI = ' PKSF-302COMPO-BASI
+129135         DISPLAY '* PKSF-302COMPO-SUFI = ' PKSF-302COMPO-SUFI
+129136         GO   TO 9999-00-ABENDA
+129137     END-IF
+129138
+129139     PERFORM 8100-00-ACESSA-FZ032V00
+129140
+129141     IF  SQLCODE  EQUAL  +100
+129142         MOVE '8000-00-TRATA-CONJUNTO'    TO WAB-PARAGRAFO
+129143         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ032V00'
+129144                                          TO WAB-OBS
+129145         DISPLAY '* CONJUNTO NAO LOCALIZADO NA FZ032V00   *'      04200000
+129146         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+129147         DISPLAY '* GSDB               = ' WS-GSDB                04200000
+129148         DISPLAY '* PKSF-302ESTRU-PREF = ' PKSF-302ESTRU-PREF     04200000
+129149         DISPLAY '* PKSF-302ESTRU-BASI = ' PKSF-302ESTRU-BASI     04200000
+129150         DISPLAY '* PKSF-302ESTRU-SUFI = ' PKSF-302ESTRU-SUFI     04200000
+129151         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+129152         DISPLAY '* PKSF-302COMPO-PREF = ' PKSF-302COMPO-PREF
+129153         DISPLAY '* PKSF-302COMPO-BASI = ' PKSF-302COMPO-BASI
+129154         DISPLAY '* PKSF-302COMPO-SUFI = ' PKSF-302COMPO-SUFI
+129155         DISPLAY '* WS-DTA-INI         = ' WS-DTA-INI
+129156         DISPLAY '* WS-DTA-FIM         = ' WS-DTA-FIM
+129157         GO   TO 9999-00-ABENDA
+129158     END-IF.
+129159
+129160
+129161 8000-10-TRATA-COMPONENTE.
+129162
+129163     PERFORM 8200-00-ACESSA-FZ033V00.
+129164
+129165
+129166 8000-99-EXIT. EXIT.
+129167*----------------------------------------------------------------*
+129168
+129169*----------------------------------------------------------------*
+129170 8100-00-ACESSA-FZ032V00      SECTION.
+129171*------------------------------------*
+129172                                                                  06380012
+129173     IF  WS-GSDB =  'FI05A'  OR  'FIA05C'  OR  'FI05E'            06380012
+129174         EXEC  SQL                                                07160012
+129175            SELECT   MAX(PKDT_032FINBUS_DT)                       07170012
+129176            INTO    :PKDT-032FINBUS-DT                            07180012
+129177            FROM     AXG0200.PAIC032V_PART_PROD                   07190012
+129178            WHERE                                                 07200012
+129179                     PKSF_032GSDB_CODE  IN ('FI05A', 'FI05C',     07260012
+129180                                            'FI05E')              07260012
+129181              AND    PKSF_032ASS_PREFIX   = :PKSF-302ESTRU-PREF   07230012
+129182              AND    PKSF_032ASS_BASIC    = :PKSF-302ESTRU-BASI   07240012
+129183              AND    PKSF_032ASS_SUFIX    = :PKSF-302ESTRU-SUFI   07250012
+129184              AND    PKDT_032FINBUS_DT   <= :WS-DTA-FIM           07170012
+129185              AND    ATND_032LEGAL_ENT   <> 0                     07210012
+129186              AND  ((ATDT_032EFFEC_OUT   IS NULL
+129187                 OR (ATDT_032EFFEC_OUT   IS NOT NULL
+129188                AND  ATDT_032EFFEC_OUT   = :WS-DTA-FIM
+129189                AND  ATSF_032OUT_FLAG    = 'S')
+129190                 OR (ATDT_032EFFEC_OUT   BETWEEN :WS-DTA-INI
+129191                                             AND   :WS-DTA-FIM)
+129192                 OR (ATDT_032EFFEC_OUT   IS NOT NULL
+129193                AND  ATDT_032EFFEC_OUT   > :WS-DTA-FIM)))
+129194            WITH UR                                               07280012
+129195         END-EXEC                                                 07290012
+129196     ELSE                                                         06380012
+129197         EXEC  SQL                                                07160012
+129198            SELECT   MAX(PKDT_032FINBUS_DT)                       07170012
+129199            INTO    :PKDT-032FINBUS-DT                            07180012
+129200            FROM     AXG0200.PAIC032V_PART_PROD                   07190012
+129201            WHERE                                                 07200012
+129202                     PKSF_032GSDB_CODE    = :WS-GSDB              07260012
+129203              AND    PKSF_032ASS_PREFIX   = :PKSF-302ESTRU-PREF   07230012
+129204              AND    PKSF_032ASS_BASIC    = :PKSF-302ESTRU-BASI   07240012
+129205              AND    PKSF_032ASS_SUFIX    = :PKSF-302ESTRU-SUFI   07250012
+129206              AND    PKDT_032FINBUS_DT   <= :WS-DTA-FIM           07170012
+129207              AND    ATND_032LEGAL_ENT   <> 0                     07210012
+129208              AND  ((ATDT_032EFFEC_OUT   IS NULL
+129209                 OR (ATDT_032EFFEC_OUT   IS NOT NULL
+129210                AND  ATDT_032EFFEC_OUT   = :WS-DTA-FIM
+129211                AND  ATSF_032OUT_FLAG    = 'S')
+129212                 OR (ATDT_032EFFEC_OUT   BETWEEN :WS-DTA-INI
+129213                                             AND   :WS-DTA-FIM)
+129214                 OR (ATDT_032EFFEC_OUT   IS NOT NULL
+129215                AND  ATDT_032EFFEC_OUT   > :WS-DTA-FIM)))
+129216            WITH UR                                               07280012
+129217         END-EXEC                                                 07290012
+129218     END-IF.                                                      07300012
+129219
+129220     IF  SQLCODE  NOT EQUAL  ZEROS  AND  +100
+129221         MOVE '8100-00-ACESSA-FZ032V00'   TO WAB-PARAGRAFO
+129222         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ032V00'
+129223                                          TO WAB-OBS
+129224         DISPLAY '* PROBLEMA NO ACESSO DB2 - SELECT FZ032V00 *'   04200000
+129225         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+129226         DISPLAY '* GSDB               = ' WS-GSDB                04200000
+129227         DISPLAY '* PKSF-302ESTRU-PREF = ' PKSF-302ESTRU-PREF     04200000
+129228         DISPLAY '* PKSF-302ESTRU-BASI = ' PKSF-302ESTRU-BASI     04200000
+129229         DISPLAY '* PKSF-302ESTRU-SUFI = ' PKSF-302ESTRU-SUFI     04200000
+129230         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+129231         DISPLAY '* PKSF-302COMPO-PREF = ' PKSF-302COMPO-PREF
+129232         DISPLAY '* PKSF-302COMPO-BASI = ' PKSF-302COMPO-BASI
+129233         DISPLAY '* PKSF-302COMPO-SUFI = ' PKSF-302COMPO-SUFI
+129234         DISPLAY '* WS-DTA-INI         = ' WS-DTA-INI
+129235         DISPLAY '* WS-DTA-FIM         = ' WS-DTA-FIM
+129236         GO   TO 9999-00-ABENDA
+129237     END-IF.
+129238
+129239
+129240 8100-99-EXIT. EXIT.
+129241*----------------------------------------------------------------*
+129242
+129243*----------------------------------------------------------------*
+129244 8200-00-ACESSA-FZ033V00      SECTION.
+129245*------------------------------------*
+129246                                                                  06380012
+129247     IF  WS-GSDB =  'FI05A'  OR  'FIA05C'  OR  'FI05E'            06380012
+129248         EXEC SQL                                                 03810012
+129249           SELECT   ATND_033LEGAL_ENT                             03890012
+129250           INTO    :ATND-033LEGAL-ENT                             03830012
+129251           FROM     AXG0200.PAIC033V_PART_BOM                     03910012
+129252           WHERE    PKSF_033GSDB_CODE   IN ('FI05A', 'FI05C',     03950012
+129253                                            'FI05E')              03950012
+129254             AND    PKSF_033ASS_PREFIX   = :PKSF-302ESTRU-PREF    03920012
+129255             AND    PKSF_033ASS_BASIC    = :PKSF-302ESTRU-BASI    03930012
+129256             AND    PKSF_033ASS_SUFIX    = :PKSF-302ESTRU-SUFI    03940012
+129257             AND    PKSF_033COMP_PREFI   = :PKSF-302COMPO-PREF    03990012
+129258             AND    PKSF_033COMP_BASIC   = :PKSF-302COMPO-BASI    04000012
+129259             AND    PKSF_033COMP_SUFIX   = :PKSF-302COMPO-SUFI    04010012
+129260             AND    PKDT_033FINBUS_DT    = :PKDT-032FINBUS-DT     03960012
+129261             AND    ATSF_033FLAG_FIFO    = '*'                    03970012
+129262             AND    ATND_033TOP_USAGE    > 0                      03980012
+129263           WITH UR                                                04020012
+129264         END-EXEC                                                 04030012
+129265     ELSE                                                         04020012
+129266         EXEC SQL                                                 03810012
+129267           SELECT   ATND_033LEGAL_ENT                             03890012
+129268           INTO    :ATND-033LEGAL-ENT                             03830012
+129269           FROM     AXG0200.PAIC033V_PART_BOM                     03910012
+129270           WHERE    PKSF_033GSDB_CODE    = :WS-GSDB               03950012
+129271             AND    PKSF_033ASS_PREFIX   = :PKSF-302ESTRU-PREF    03920012
+129272             AND    PKSF_033ASS_BASIC    = :PKSF-302ESTRU-BASI    03930012
+129273             AND    PKSF_033ASS_SUFIX    = :PKSF-302ESTRU-SUFI    03940012
+129274             AND    PKSF_033COMP_PREFI   = :PKSF-302COMPO-PREF    03990012
+129275             AND    PKSF_033COMP_BASIC   = :PKSF-302COMPO-BASI    04000012
+129276             AND    PKSF_033COMP_SUFIX   = :PKSF-302COMPO-SUFI    04010012
+129277             AND    PKDT_033FINBUS_DT    = :PKDT-032FINBUS-DT     03960012
+129278             AND    ATSF_033FLAG_FIFO    = '*'                    03970012
+129279             AND    ATND_033TOP_USAGE    > 0                      03980012
+129280           WITH UR                                                04020012
+129281         END-EXEC                                                 04030012
+129282     END-IF                                                       04020012
+129283
+129284     IF  SQLCODE  NOT EQUAL  ZEROS  AND  +100  AND -811
+129285         MOVE '8200-00-ACESSA-FZ033V00'   TO WAB-PARAGRAFO
+129286         MOVE 'PROBLEMA NO ACESSO DB2 - SELECT FZ033V00'
+129287                                       TO WAB-OBS
+129288         DISPLAY '* PROBLEMA NO ACESSO DB2 - SELECT FZ033V00 *'   04200000
+129289         DISPLAY '* PKSF-302CNPJ       = ' PKSF-302CNPJ           04200000
+129290         DISPLAY '* GSDB               = ' WS-GSDB                04200000
+129291         DISPLAY '* PKSF-302ESTRU-PREF = ' PKSF-302ESTRU-PREF     04200000
+129292         DISPLAY '* PKSF-302ESTRU-BASI = ' PKSF-302ESTRU-BASI     04200000
+129293         DISPLAY '* PKSF-302ESTRU-SUFI = ' PKSF-302ESTRU-SUFI     04200000
+129294         DISPLAY '* PKDT-302REFERENCIA = ' PKDT-302REFERENCIA     04200000
+129295         DISPLAY '* PKSF-302COMPO-PREF = ' PKSF-302COMPO-PREF
+129296         DISPLAY '* PKSF-302COMPO-BASI = ' PKSF-302COMPO-BASI
+129297         DISPLAY '* PKSF-302COMPO-SUFI = ' PKSF-302COMPO-SUFI
+129298         DISPLAY '* PKDT-032FINBUS-DT  = ' PKDT-032FINBUS-DT
+129299         GO   TO 9999-00-ABENDA
+129300     END-IF.
+129301
+129302     IF  SQLCODE  EQUAL   ZEROS  OR  -811
+129303         MOVE   ATND-033LEGAL-ENT      TO    WS-LEGAL-ENT
+129304         MOVE   PKDT-032FINBUS-DT      TO    WS-LEGAL-ENT-DT
+129305     ELSE
+129306         MOVE   ZEROS                  TO    WS-LEGAL-ENT
+129307         MOVE   SPACES                 TO    WS-LEGAL-ENT-DT
+129308         DISPLAY  '* COMPONENTE NAO LOCALIZADO NA FZ033V00 *'
+129309         DISPLAY  '* PKSF_033ASS_PREFIX   = ' PKSF-302ESTRU-PREF  03920012
+129310         DISPLAY  '* PKSF_033ASS_BASIC    = ' PKSF-302ESTRU-BASI  03930012
+129311         DISPLAY  '* PKSF_033ASS_SUFIX    = ' PKSF-302ESTRU-SUFI  03940012
+129312         DISPLAY  '* PKSF_033COMP_PREFI   = ' PKSF-302COMPO-PREF  03990012
+129313         DISPLAY  '* PKSF_033COMP_BASIC   = ' PKSF-302COMPO-BASI  04000012
+129314         DISPLAY  '* PKSF_033COMP_SUFIX   = ' PKSF-302COMPO-SUFI  04010012
+129315         DISPLAY  '* PKDT_033FINBUS_DT    = ' PKDT-032FINBUS-DT   03960012
+129316     END-IF.
+129317
+129318 8200-99-EXIT. EXIT.
+129319*----------------------------------------------------------------*
+129320
+129321*----------------------------------------------------------------*
+129322 8400-00-OBTEM-DATAS          SECTION.
+129323*------------------------------------*
+129324
+129325     MOVE  PKDT-302REFERENCIA   TO  WS-DTA-FIM.
+129326
+129327     COMPUTE  WS-MES-FIM  =  WS-MES-FIM  -  1
+129328
+129329     IF  WS-MES-FIM  =  ZEROS
+129330         COMPUTE  WS-ANO-FIM  =  WS-ANO-FIM  -  1
+129331         MOVE     12         TO  WS-MES-FIM
+129332     END-IF
+129333
+129334     IF  WS-MES-FIM EQUAL 02
+129335         DIVIDE  WS-ANO-FIM BY 4 GIVING WS-QUOCIENTE
+129336                 REMAINDER  WS-RESTO
+129337         IF  WS-RESTO  EQUAL  ZEROS
+129338             MOVE  29  TO  WS-DIA-FIM
+129339         ELSE
+129340             MOVE  28  TO  WS-DIA-FIM
+129341         END-IF
+129342     ELSE
+129343         IF  WS-MES-FIM EQUAL 01 OR  03  OR  05  OR  07
+129344                         OR  08  OR  10  OR  12
+129345             MOVE  31  TO  WS-DIA-FIM
+129346         ELSE
+129347             MOVE  30  TO  WS-DIA-FIM
+129348         END-IF
+129349     END-IF.
+129350
+129351     MOVE  WS-DTA-FIM     TO  WS-DTA-INI.
+129352     MOVE  '01'           TO  WS-DTA-INI(1:2)
+129353     MOVE  '.'            TO  WS-DTA-INI(3:1)
+129354     MOVE  '.'            TO  WS-DTA-INI(6:1)
+129355     MOVE  '.'            TO  WS-DTA-FIM(3:1)
+129356     MOVE  '.'            TO  WS-DTA-FIM(6:1).
+129357
+129358 8400-99-EXIT. EXIT.
+129359*----------------------------------------------------------------*
+129360*                                                                 04810000
+129361*----------------------------------------------------------------*
+129362 8700-00-DELETE-FZ041V        SECTION.
+129363*------------------------------------*
+129364
+129365     EXEC SQL
+129366           DELETE
+129367           FROM AXG0200.PAIC041V_SOL_PROC
+129368           WHERE  PKSF_041JOBNAME   =  'FFZ7265E'
+129369     END-EXEC.
+129370
+129371     IF  SQLCODE       NOT EQUAL  +000  AND  +100
+129372         MOVE '8700-00-DELETE-FZ041V'     TO WAB-PARAGRAFO
+129373         MOVE 'PROBLEMA NO ACESSO DB2'    TO WAB-OBS
+129374         GO   TO 9999-00-ABENDA
+129375     ELSE
+129376         IF  SQLCODE       EQUAL  +000
+129377             ADD  SQLERRD (3)     TO   WAC-DEL-CSR041
+129378         END-IF
+129379     END-IF.
+129380
+129381 8700-99-EXIT. EXIT.
+129382*----------------------------------------------------------------*
+129383                                                                  01950000
+129384*----------------------------------------------------------------*
+129385 8800-00-DISPLAY-WAC          SECTION.
+129386*------------------------------------*
+129387
+129388     MOVE WAC-LID-CSR041         TO WED-LID-CSR041
+129389     MOVE WAC-DEL-CSR041         TO WED-DEL-CSR041
+129390     MOVE WAC-LID-CSR302         TO WED-LID-CSR302
+129391     MOVE WAC-LID-CSR303         TO WED-LID-CSR303
+129392     MOVE WAC-LID-FZ101V         TO WED-LID-FZ101V
+129393     MOVE WAC-LID-FZ301V-FCI     TO WED-LID-FZ301V-FCI
+129394     MOVE WAC-LID-FZ301V-PREVIA  TO WED-LID-FZ301V-PREVIA
+129395     MOVE WAC-LID-FZ030V         TO WED-LID-FZ030V
+129396     MOVE WAC-LID-FZ031V         TO WED-LID-FZ031V
+129397     MOVE WAC-GRV-AS1            TO WED-GRV-AS1.
+129398     MOVE WAC-GRV-AS2            TO WED-GRV-AS2.
+129399     MOVE WAC-GRV-AS3            TO WED-GRV-AS3.
+129400
+129401     DISPLAY '* LIDOS  CURSOR  FZ041V  - ' WED-LID-CSR041
+129402     DISPLAY '* EXCLUIDOS TAB. FZ041V  - ' WED-DEL-CSR041
+129403     DISPLAY '* LIDOS  CURSOR  FZ302V  - ' WED-LID-CSR302
+129404     DISPLAY '* LIDOS  CURSOR  FZ303V  - ' WED-LID-CSR303
+129405     DISPLAY '* LIDOS  TAB.    FZ101V  - ' WED-LID-FZ101V
+129406     DISPLAY '* LIDOS  FZ301V (FCI)    - ' WED-LID-FZ301V-FCI
+129407     DISPLAY '* LIDOS  FZ301V (PREVIA) - ' WED-LID-FZ301V-PREVIA
+129408     DISPLAY '* LIDOS  TAB.    FZ030V  - ' WED-LID-FZ030V
+129409     DISPLAY '* LIDOS  TAB.    FZ031V  - ' WED-LID-FZ031V
+129410     DISPLAY '* GRAVADOS ARQ. AS1ESTRU - ' WED-GRV-AS1
+129411     DISPLAY '* GRAVADOS ARQ. AS2NFENT - ' WED-GRV-AS2
+129412     DISPLAY '* GRAVADOS ARQ. AS3NFSAI - ' WED-GRV-AS3
+129413     DISPLAY '*-------------------------------------------*'.
+129414
+129415
+129416 8800-99-EXIT. EXIT.
+129417*----------------------------------------------------------------*
+129418
+129419*----------------------------------------------------------------*
+129420 9999-00-ABENDA               SECTION.
+129421*------------------------------------*
+129422
+129423     MOVE SQLCODE TO WAB-SQLCODE.
+129424
+129425     DISPLAY '*-------------------------------------------*'
+129426     DISPLAY '*-   FIM ANORMAL PGM FZ016A00              -*'
+129427     DISPLAY '*-------------------------------------------*'
+129428     DISPLAY '*- ROTINA  : ' WAB-PARAGRAFO
+129429     DISPLAY '*-    OBS  : ' WAB-OBS
+129430     DISPLAY '*- SQLCODE : ' WAB-SQLCODE
+129431     DISPLAY '*-------------------------------------------*'
+129432
+129433     PERFORM 8800-00-DISPLAY-WAC.
+129434
+129435     COMPUTE WAB-S0CB = WAB-S0CB / WAB-S0CB.
+129436
+129437 9999-99-EXIT. EXIT.
+129438*----------------------------------------------------------------*
