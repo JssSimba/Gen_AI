@@ -1,0 +1,451 @@
+00001  IDENTIFICATION DIVISION.                                         PEXVS
+00002  PROGRAM-ID.   EXVS000.                                           PEXVS
+00003  AUTHOR.       CYNTHIA FORSYTH.                                   PEXVS
+00004  DATE-WRITTEN. JULY 23, 1990.                                     PEXVS
+00005  DATE-COMPILED.                                                   PEXVS
+00006                                                                   PEXVS
+00007 ***************************************************************** PEXVS
+00008 *   DESCRIPTION:  INPUT FILE LENGTH IS 393                      * PEXVS
+00009 *                 1.  COMPARES THE CURRENT USOB FILE WITH THE   * PEXVS
+00010 *                     PRIOR USOB FILE                           * PEXVS
+00011 *                                                               * PEXVS
+00012 *                 2.  CREATES A NEW USOB FILE OF CHANGES ONLY   * PEXVS
+00013 *                                                               * PEXVS
+00014 *                 NOTE:  THIS PROGRAM CANCELS ANY RECORD THAT   * PEXVS
+00015 *                        IS ON THE PRIOR USOB FILE AND NOT ON   * PEXVS
+00016 *                        THE CURRENT USOB FILE.                 * PEXVS
+00017 *                                                               * PEXVS
+00018 ***************************************************************** PEXVS
+00019 *                                                                 PEXVS
+00020  ENVIRONMENT DIVISION.                                            PEXVS
+00021 *                                                                 PEXVS
+00022  INPUT-OUTPUT SECTION.                                            PEXVS
+00023  FILE-CONTROL.                                                    PEXVS
+00024      SELECT USOB-FILE-IN            ASSIGN USOBIN.                PEXVS
+00025      SELECT PRIOR-USOB-FILE-IN      ASSIGN PUSOBIN.               PEXVS
+00026      SELECT FIES-USOB-OUT           ASSIGN USOBOUT.               PEXVS
+00027      SELECT AUDIT-RPT-FILE          ASSIGN AUDIT.                 PEXVS
+00028 *                                                                 PEXVS
+00029  DATA DIVISION.                                                   PEXVS
+00030  FILE SECTION.                                                    PEXVS
+00031 *                                                                 PEXVS
+00032  FD  USOB-FILE-IN                                                 PEXVS
+00033      RECORDING MODE IS F                                          PEXVS
+00034      BLOCK CONTAINS 0 RECORDS                                     PEXVS
+00035      RECORD CONTAINS 393 CHARACTERS                               PEXVS
+00036      DATA RECORD IS USOB-REC-IN.                                  PEXVS
+00037 *                                                                 PEXVS
+00038  01  USOB-REC-IN                      PIC X(393).                 PEXVS
+00039 *                                                                 PEXVS
+00040  FD  PRIOR-USOB-FILE-IN                                           PEXVS
+00041      RECORDING MODE IS F                                          PEXVS
+00042      BLOCK CONTAINS 0 RECORDS                                     PEXVS
+00043      RECORD CONTAINS 393 CHARACTERS                               PEXVS
+00044      DATA RECORD IS PUSOB-REC-IN.                                 PEXVS
+00045 *                                                                 PEXVS
+00046  01  PUSOB-REC-IN                     PIC X(393).                 PEXVS
+00047 *                                                                 PEXVS
+00048  FD  FIES-USOB-OUT                                                PEXVS
+00049      RECORDING MODE IS F                                          PEXVS
+00050      BLOCK CONTAINS 0 RECORDS                                     PEXVS
+00051      RECORD CONTAINS 393 CHARACTERS                               PEXVS
+00052      DATA RECORD IS USOB-REC-OUT.                                 PEXVS
+00053 *                                                                 PEXVS
+00054  01  USOB-REC-OUT                     PIC X(393).                 PEXVS
+00055 *                                                                 PEXVS
+00056  FD  AUDIT-RPT-FILE                                               PEXVS
+00057      BLOCK CONTAINS 0 RECORDS                                     PEXVS
+00058      RECORD CONTAINS 132 CHARACTERS                               PEXVS
+00059      DATA RECORD IS AUDIT-RECORD.                                 PEXVS
+00060 *                                                                 PEXVS
+00061  01  AUDIT-RECORD                     PIC X(132).                 PEXVS
+00062 /                                                                 PEXVS
+00063  WORKING-STORAGE SECTION.                                         PEXVS
+000635 77  PAN-VALET PICTURE X(24) VALUE '012PEXVS000  11/20/97'.       PEXVS
+00064  77  PRINT-PANVALET                   PIC  X(24).                 PEXVS
+00065 *                                                                 PEXVS
+00066  01  AUDIT-HEADER.                                                PEXVS
+00067      05  FILLER                       PIC X(05)  VALUE SPACES.    PEXVS
+00068      05  AUDIT-HEADING.                                           PEXVS
+00069          10  AUDIT-HEADING1           PIC X(18)  VALUE SPACES.    PEXVS
+00070          10  AUDIT-HEADING2           PIC X(109) VALUE SPACES.    PEXVS
+00071                                                                   PEXVS
+00072  01  AUDIT-DETAIL.                                                PEXVS
+00073      05  FILLER                       PIC X(05)  VALUE SPACES.    PEXVS
+00074      05  AUDIT-MESSAGE                PIC X(30)  VALUE SPACES.    PEXVS
+00075      05  AUDIT-SEP                    PIC X(03)  VALUE SPACES.    PEXVS
+00076      05  AUDIT-COUNT                  PIC X(94)  VALUE SPACES.    PEXVS
+00077                                                                   PEXVS
+00078 *                                                                 PEXVS
+00079  01  USOB-REC-LAYOUT.                                             PEXVS
+00080  COPY CPEX505.                                                    PEXVS
+00081 *                                                                 PEXVS
+00082  01  USOB-TEMP-REC                    PIC X(393).                 PEXVS
+00083 *                                                                 PEXVS
+00084  01  PRIOR-USOB-REC-LAYOUT.                                       PEXVS
+00085  COPY CPEX506.                                                    PEXVS
+00086 *                                                                 PEXVS
+00087  01  WS-WORK-DATE.                                                PEXVS
+00088      05  WS-DATE-YY                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00089      05  WS-DATE-MM                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00090      05  WS-DATE-DD                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00091 *                                                                 PEXVS
+00092  01  WS-WORK-TIME.                                                PEXVS
+00093      05  WS-TIME-HH                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00094      05  WS-TIME-MM                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00095      05  WS-TIME-SS                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00096      05  WS-TIME-HS                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00097 *                                                                 PEXVS
+00098  01  WS-START-TIME.                                               PEXVS
+00099      05  WS-START-HH                  PIC Z9.                     PEXVS
+00100      05  WS-START-COL1                PIC X(01)  VALUE ':'.       PEXVS
+00101      05  WS-START-MM                  PIC 99.                     PEXVS
+00102      05  WS-START-COL2                PIC X(01)  VALUE ':'.       PEXVS
+00103      05  WS-START-SS                  PIC 99.                     PEXVS
+00104      05  WS-START-COL3                PIC X(01)  VALUE ':'.       PEXVS
+00105      05  WS-START-HS                  PIC 99.                     PEXVS
+00106 *                                                                 PEXVS
+00107  01  WS-END-TIME.                                                 PEXVS
+00108      05  WS-END-HH                    PIC Z9.                     PEXVS
+00109      05  WS-END-COL1                  PIC X(01)  VALUE ':'.       PEXVS
+00110      05  WS-END-MM                    PIC 99.                     PEXVS
+00111      05  WS-END-COL2                  PIC X(01)  VALUE ':'.       PEXVS
+00112      05  WS-END-SS                    PIC 99.                     PEXVS
+00113      05  WS-END-COL3                  PIC X(01)  VALUE ':'.       PEXVS
+00114      05  WS-END-HS                    PIC 99.                     PEXVS
+00115 *                                                                 PEXVS
+00116  01  WS-RUN-DATE.                                                 PEXVS
+00117      05  WS-RUN-MM                    PIC Z9.                     PEXVS
+00118      05  WS-SLASH1                    PIC X(01)  VALUE '/'.       PEXVS
+00119      05  WS-RUN-DD                    PIC 99.                     PEXVS
+00120      05  WS-SLASH2                    PIC X(01)  VALUE '/'.       PEXVS
+00121      05  WS-RUN-YY                    PIC 99.                     PEXVS
+00122 *                                                                 PEXVS
+00123  01  WS-USOB-HOLD-KEY.                                            PEXVS
+00124      05  WS-USOB-HOLD-1.                                          PEXVS
+00125          10  WS-USOB-HOLD-MODEL-YR    PIC X(02)  VALUE SPACES.    PEXVS
+00126          10  WS-USOB-HOLD-DIV         PIC X(01)  VALUE SPACES.    PEXVS
+00127          10  WS-USOB-HOLD-DIST        PIC X(02)  VALUE SPACES.    PEXVS
+00128          10  WS-USOB-HOLD-DLR         PIC X(03)  VALUE SPACES.    PEXVS
+00129          10  WS-USOB-HOLD-ITEM        PIC X(06)  VALUE SPACES.    PEXVS
+00130      05  WS-USOB-HOLD-BODY-TYPE       PIC X(03)  VALUE SPACES.    PEXVS
+00131 *                                                                 PEXVS
+00132  01  WS-USOB-LAST-KEY.                                            PEXVS
+00133      05  FILLER                       PIC X(17)  VALUE SPACES.    PEXVS
+00134 *                                                                 PEXVS
+00135  01  WS-PUSOB-HOLD-KEY.                                           PEXVS
+00136      05  WS-PUSOB-HOLD-1.                                         PEXVS
+00137          10  WS-PUSOB-HOLD-MODEL-YR   PIC X(02)  VALUE SPACES.    PEXVS
+00138          10  WS-PUSOB-HOLD-DIV        PIC X(01)  VALUE SPACES.    PEXVS
+00139          10  WS-PUSOB-HOLD-DIST       PIC X(02)  VALUE SPACES.    PEXVS
+00140          10  WS-PUSOB-HOLD-DLR        PIC X(03)  VALUE SPACES.    PEXVS
+00141          10  WS-PUSOB-HOLD-ITEM       PIC X(06)  VALUE SPACES.    PEXVS
+00142      05  WS-PUSOB-HOLD-BODY-TYPE      PIC X(03)  VALUE SPACES.    PEXVS
+00143 *                                                                 PEXVS
+00144  01  WS-PUSOB-LAST-KEY.                                           PEXVS
+00145      05  FILLER                       PIC X(17)  VALUE SPACES.    PEXVS
+00146 *                                                                 PEXVS
+00147  01  WS-COUNTERS-N-CONSTANTS.                                     PEXVS
+00148      05  WS-FILE-ID                   PIC X(04)  VALUE 'USOB'.    PEXVS
+00149      05  WS-USOB-REC-READ             PIC 9(06)  VALUE ZEROS.     PEXVS
+00150      05  WS-PUSOB-REC-READ            PIC 9(06)  VALUE ZEROS.     PEXVS
+00151      05  WS-FIES-REC-WRIT             PIC 9(06)  VALUE ZEROS.     PEXVS
+00152      05  WS-1                         PIC 9(01)  VALUE 1.         PEXVS
+00153      05  WS-YES                       PIC X(01)  VALUE 'Y'.       PEXVS
+00154      05  WS-NO                        PIC X(01)  VALUE 'N'.       PEXVS
+00155 *                                                                 PEXVS
+00156  01  WS-SWITCHES.                                                 PEXVS
+00157      05  WS-USOB-EOF-SW               PIC X(01)  VALUE 'N'.       PEXVS
+00158          88  WS-USOB-EOF                         VALUE 'Y'.       PEXVS
+00159      05  WS-PUSOB-EOF-SW              PIC X(01)  VALUE 'N'.       PEXVS
+00160          88  WS-PUSOB-EOF                        VALUE 'Y'.       PEXVS
+00161 *                                                                 PEXVS
+00162 /                                                                 PEXVS
+00163  PROCEDURE DIVISION.                                              PEXVS
+00164                                                                   PEXVS
+00165  0000-MAINLINE.                                                   PEXVS
+00166 ****************************************************************  PEXVS
+00167 *                                                              *  PEXVS
+00168 *  DESCRIPTION:  MAIN PROCESSING                               *  PEXVS
+00169 *                                                              *  PEXVS
+00170 ****************************************************************  PEXVS
+00171                                                                   PEXVS
+00172      PERFORM 1000-HOUSEKEEPING.                                   PEXVS
+00173                                                                   PEXVS
+00174      PERFORM 7000-READ-USOB-FILE.                                 PEXVS
+00175                                                                   PEXVS
+00176      PERFORM 8000-READ-PUSOB-FILE.                                PEXVS
+00177                                                                   PEXVS
+00178      PERFORM 4000-PROCESS                                         PEXVS
+00179              UNTIL (WS-USOB-EOF AND WS-PUSOB-EOF).                PEXVS
+00180                                                                   PEXVS
+00181      PERFORM 6000-WRITE-AUDIT-REPORT.                             PEXVS
+00182                                                                   PEXVS
+00183      PERFORM 9900-EOJ.                                            PEXVS
+00184                                                                   PEXVS
+00185      GOBACK.                                                      PEXVS
+00186                                                                   PEXVS
+00187 /                                                                 PEXVS
+00188  1000-HOUSEKEEPING.                                               PEXVS
+00189 ******************************************************************PEXVS
+00190 *                                                                *PEXVS
+00191 *  DESCRIPTION:  THIS PARAGRAPH OPENS THE FILES AND ACCEPTS      *PEXVS
+00192 *                THE DATE AND TIME.                              *PEXVS
+00193 *                                                                *PEXVS
+00194 ******************************************************************PEXVS
+00195                                                                   PEXVS
+00196      OPEN INPUT        USOB-FILE-IN                               PEXVS
+00197                        PRIOR-USOB-FILE-IN                         PEXVS
+00198           OUTPUT       FIES-USOB-OUT                              PEXVS
+00199                        AUDIT-RPT-FILE.                            PEXVS
+00200                                                                   PEXVS
+00201      MOVE WS-NO                       TO WS-USOB-EOF-SW.          PEXVS
+00202      MOVE WS-NO                       TO WS-PUSOB-EOF-SW.         PEXVS
+00203      MOVE SPACES                      TO WS-USOB-LAST-KEY.        PEXVS
+00204      MOVE SPACES                      TO WS-PUSOB-LAST-KEY.       PEXVS
+00205                                                                   PEXVS
+00206      ACCEPT WS-WORK-TIME  FROM   TIME.                            PEXVS
+00207      MOVE WS-TIME-HH                  TO WS-START-HH.             PEXVS
+00208      MOVE WS-TIME-MM                  TO WS-START-MM.             PEXVS
+00209      MOVE WS-TIME-SS                  TO WS-START-SS.             PEXVS
+00210      MOVE WS-TIME-HS                  TO WS-START-HS.             PEXVS
+00211                                                                   PEXVS
+00212      ACCEPT WS-WORK-DATE  FROM   DATE.                            PEXVS
+00213      MOVE WS-DATE-YY                  TO WS-RUN-YY.               PEXVS
+00214      MOVE WS-DATE-MM                  TO WS-RUN-MM.               PEXVS
+00215      MOVE WS-DATE-DD                  TO WS-RUN-DD.               PEXVS
+00216                                                                   PEXVS
+00217      MOVE 'PGM VERSION - C -'         TO AUDIT-HEADING1.          PEXVS
+00218      MOVE PAN-VALET                   TO AUDIT-HEADING2.          PEXVS
+00219      WRITE AUDIT-RECORD FROM AUDIT-HEADER.                        PEXVS
+00220                                                                   PEXVS
+00221      MOVE 'EXVS000 AUDIT REPORT'      TO AUDIT-HEADING.           PEXVS
+00222      WRITE AUDIT-RECORD FROM AUDIT-HEADER.                        PEXVS
+00223                                                                   PEXVS
+00224      MOVE 'PROGRAM RUN DATE '         TO AUDIT-MESSAGE.           PEXVS
+00225      MOVE '='                         TO AUDIT-SEP.               PEXVS
+00226      MOVE WS-RUN-DATE                 TO AUDIT-COUNT.             PEXVS
+00227      WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 2.      PEXVS
+00228                                                                   PEXVS
+00229      MOVE 'PROGRAM START TIME'        TO AUDIT-MESSAGE.           PEXVS
+00230      MOVE WS-START-TIME               TO AUDIT-COUNT.             PEXVS
+00231      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00232                                                                   PEXVS
+00233 /                                                                 PEXVS
+00234  4000-PROCESS.                                                    PEXVS
+00235 ******************************************************************PEXVS
+00236 *   DESCRIPTION:  THIS PARAGRAPH PROCESSES ALL INPUT RECORDS     *PEXVS
+00237 *                 UNTIL END OF FILE.                             *PEXVS
+00238 *                                                                *PEXVS
+00239 ******************************************************************PEXVS
+00240                                                                   PEXVS
+00241      IF WS-USOB-HOLD-KEY  =  WS-PUSOB-HOLD-KEY                    PEXVS
+00242         PERFORM 4100-SEARCH-EQUAL-KEY                             PEXVS
+00243      ELSE                                                         PEXVS
+00244         IF WS-USOB-HOLD-KEY < WS-PUSOB-HOLD-KEY                   PEXVS
+00245            PERFORM 4200-SEARCH-LESS-KEY                           PEXVS
+00246         ELSE                                                      PEXVS
+00247            IF WS-USOB-HOLD-KEY > WS-PUSOB-HOLD-KEY                PEXVS
+00248               PERFORM 4300-SEARCH-GREAT-KEY.                      PEXVS
+00249 /                                                                 PEXVS
+00250  4100-SEARCH-EQUAL-KEY.                                           PEXVS
+00251 ******************************************************************PEXVS
+00252 *                                                                *PEXVS
+00253 * DESCRIPTION: THIS PARAGRAPH IS EXECUTED IF THE KEYS ARE EQUAL  *PEXVS
+00254 *                                                                *PEXVS
+00255 ******************************************************************PEXVS
+00256                                                                   PEXVS
+00257      IF OB-DATA NOT = POB-DATA                                    PEXVS
+00258         PERFORM 5000-WRITE-FIES-EXTRACT.                          PEXVS
+00259                                                                   PEXVS
+00260      PERFORM 7000-READ-USOB-FILE.                                 PEXVS
+00261                                                                   PEXVS
+00262      PERFORM 8000-READ-PUSOB-FILE.                                PEXVS
+00263                                                                   PEXVS
+00264 /                                                                 PEXVS
+00265  4200-SEARCH-LESS-KEY.                                            PEXVS
+00266 ******************************************************************PEXVS
+00267 *                                                                *PEXVS
+00268 *  DESCRIPTION: THIS PARAGRAPH IS EXECUTED IF THE                *PEXVS
+00269 *               USOB KEY < PUSOB KEY                             *PEXVS
+00270 *                                                                *PEXVS
+00271 ******************************************************************PEXVS
+00272                                                                   PEXVS
+00273      PERFORM 5000-WRITE-FIES-EXTRACT.                             PEXVS
+00274                                                                   PEXVS
+00275      PERFORM 7000-READ-USOB-FILE.                                 PEXVS
+00276                                                                   PEXVS
+00277 /                                                                 PEXVS
+00278  4300-SEARCH-GREAT-KEY.                                           PEXVS
+00279 ******************************************************************PEXVS
+00280 *                                                                *PEXVS
+00281 *  DESCRIPTION: THIS PARAGRAPH IS EXECUTED IF                    *PEXVS
+00282 *               USOB KEY > PUSOB KEY                             *PEXVS
+00283 *                                                                *PEXVS
+00284 ******************************************************************PEXVS
+00285                                                                   PEXVS
+00286 ******************************************************************PEXVS
+00287 *                                                                 PEXVS
+00288 *  THE FOLLOWING IF STATMENT WAS ADDED TO CANCEL ANY UNIT THAT IS PEXVS
+00289 *  IN A STATUS OF 025 OR 050 THAT DID NOT HAVE A CANCEL           PEXVS
+00290 *  TRANSACTION TRANSMITTED FROM THE UNSCHEDULED ORDER BANK,       PEXVS
+00291 *  BECAUSE OF A DOUBLE CANCEL PROBLEM.                            PEXVS
+00292 *                                                                 PEXVS
+00293 *  1/10/91       ANALYST - CYNTHIA FORSYTH                        PEXVS
+00294 ******************************************************************PEXVS
+00295                                                                   PEXVS
+00296      IF POB-STATUS = '025' OR '050'                               PEXVS
+00297         MOVE '100'                    TO POB-STATUS               PEXVS
+00298         MOVE WS-WORK-DATE             TO POB-STATUS-DATE          PEXVS
+00299         MOVE USOB-REC-LAYOUT          TO USOB-TEMP-REC            PEXVS
+00300         MOVE PRIOR-USOB-REC-LAYOUT    TO USOB-REC-LAYOUT          PEXVS
+00301         PERFORM 5000-WRITE-FIES-EXTRACT                           PEXVS
+00302         MOVE USOB-TEMP-REC            TO USOB-REC-LAYOUT.         PEXVS
+00303                                                                   PEXVS
+00304      PERFORM 8000-READ-PUSOB-FILE.                                PEXVS
+00305                                                                   PEXVS
+00306 /                                                                 PEXVS
+00307  5000-WRITE-FIES-EXTRACT.                                         PEXVS
+00308 ******************************************************************PEXVS
+00309 *                                                                *PEXVS
+00310 *  DESCRIPTION: WRITE THE USOB FILE                              *PEXVS
+00311 *                                                                *PEXVS
+00312 ******************************************************************PEXVS
+00313                                                                   PEXVS
+00314      WRITE USOB-REC-OUT FROM USOB-REC-LAYOUT.                     PEXVS
+00315      ADD +1                       TO WS-FIES-REC-WRIT.            PEXVS
+00316                                                                   PEXVS
+00317 /                                                                 PEXVS
+00318  6000-WRITE-AUDIT-REPORT.                                         PEXVS
+00319 ******************************************************************PEXVS
+00320 *                                                                *PEXVS
+00321 *  DESCRIPTION: THIS PARAGRAPH WRITES THE AUDIT REPORT           *PEXVS
+00322 *                                                                *PEXVS
+00323 ******************************************************************PEXVS
+00324                                                                   PEXVS
+00325      ACCEPT WS-WORK-TIME  FROM   TIME.                            PEXVS
+00326      MOVE WS-TIME-HH                  TO WS-END-HH.               PEXVS
+00327      MOVE WS-TIME-MM                  TO WS-END-MM.               PEXVS
+00328      MOVE WS-TIME-SS                  TO WS-END-SS.               PEXVS
+00329      MOVE WS-TIME-HS                  TO WS-END-HS.               PEXVS
+00330                                                                   PEXVS
+00331      MOVE 'USOB CURRENT REC READ'     TO AUDIT-MESSAGE.           PEXVS
+00332      MOVE WS-USOB-REC-READ            TO AUDIT-COUNT.             PEXVS
+00333      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00334                                                                   PEXVS
+00335      MOVE 'USOB PRIOR RECORDS READ '  TO AUDIT-MESSAGE.           PEXVS
+00336      MOVE WS-PUSOB-REC-READ           TO AUDIT-COUNT.             PEXVS
+00337      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00338                                                                   PEXVS
+00339      MOVE 'USOB RECORDS WRITTEN    '  TO AUDIT-MESSAGE.           PEXVS
+00340      MOVE WS-FIES-REC-WRIT            TO AUDIT-COUNT.             PEXVS
+00341      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00342                                                                   PEXVS
+00343      MOVE 'PROGRAM COMPLETION TIME'   TO AUDIT-MESSAGE.           PEXVS
+00344      MOVE WS-END-TIME                 TO AUDIT-COUNT.             PEXVS
+00345      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00346                                                                   PEXVS
+00347      MOVE SPACES                      TO AUDIT-DETAIL.            PEXVS
+00348      MOVE 'EXVS000 ENDED SUCCESSFULLY ' TO AUDIT-MESSAGE.         PEXVS
+00349      MOVE SPACES                        TO AUDIT-COUNT.           PEXVS
+00350      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00351                                                                   PEXVS
+00352 /                                                                 PEXVS
+00353  7000-READ-USOB-FILE.                                             PEXVS
+00354 ******************************************************************PEXVS
+00355 *                                                                *PEXVS
+00356 *  DESCRIPTION: THIS PARAGRAPH READS THE USOB INPUT FILE         *PEXVS
+00357 *                                                                *PEXVS
+00358 ******************************************************************PEXVS
+00359                                                                   PEXVS
+00360      READ USOB-FILE-IN     INTO  USOB-REC-LAYOUT                  PEXVS
+00361          AT END                                                   PEXVS
+00362              MOVE WS-YES              TO WS-USOB-EOF-SW           PEXVS
+00363              MOVE HIGH-VALUES         TO WS-USOB-HOLD-KEY.        PEXVS
+00364                                                                   PEXVS
+00365      IF NOT WS-USOB-EOF                                           PEXVS
+00366         MOVE OB-CONTROL               TO WS-USOB-HOLD-1           PEXVS
+00367         MOVE OB-VO-BODYTYPE           TO WS-USOB-HOLD-BODY-TYPE   PEXVS
+00368         ADD WS-1                      TO WS-USOB-REC-READ.        PEXVS
+00369                                                                   PEXVS
+00370      IF WS-USOB-HOLD-KEY > WS-USOB-LAST-KEY                       PEXVS
+00371          MOVE WS-USOB-HOLD-KEY        TO WS-USOB-LAST-KEY         PEXVS
+00372        ELSE                                                       PEXVS
+00373          MOVE 'JOB ABORTING     '         TO AUDIT-MESSAGE        PEXVS
+00374          MOVE '='                         TO AUDIT-SEP            PEXVS
+00375          MOVE SPACES                      TO AUDIT-COUNT          PEXVS
+00376          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 2   PEXVS
+00377          MOVE 'USOB FILE OUT OF SEQUENCE' TO AUDIT-MESSAGE        PEXVS
+00378          MOVE SPACES                      TO AUDIT-COUNT          PEXVS
+00379          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 1   PEXVS
+00380          MOVE 'CURRENT RECORD KEY'        TO AUDIT-MESSAGE        PEXVS
+00381          MOVE '='                         TO AUDIT-SEP            PEXVS
+00382          MOVE WS-USOB-HOLD-KEY            TO AUDIT-COUNT          PEXVS
+00383          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 1   PEXVS
+00384          MOVE 'LAST RECORD KEY'           TO AUDIT-MESSAGE        PEXVS
+00385          MOVE '='                         TO AUDIT-SEP            PEXVS
+00386          MOVE WS-USOB-LAST-KEY            TO AUDIT-COUNT          PEXVS
+00387          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 1   PEXVS
+00388          PERFORM 9999-ABEND.                                      PEXVS
+00389                                                                   PEXVS
+00390 /                                                                 PEXVS
+00391  8000-READ-PUSOB-FILE.                                            PEXVS
+00392 ******************************************************************PEXVS
+00393 *                                                                *PEXVS
+00394 *  DESCRIPTION: THIS PARAGRAPH READS THE PRIOR USOB INPUT FILE   *PEXVS
+00395 *                                                                *PEXVS
+00396 ******************************************************************PEXVS
+00397                                                                   PEXVS
+00398      READ PRIOR-USOB-FILE-IN INTO PRIOR-USOB-REC-LAYOUT           PEXVS
+00399          AT END                                                   PEXVS
+00400              MOVE WS-YES              TO WS-PUSOB-EOF-SW          PEXVS
+00401              MOVE HIGH-VALUES         TO WS-PUSOB-HOLD-KEY.       PEXVS
+00402                                                                   PEXVS
+00403      IF NOT WS-PUSOB-EOF                                          PEXVS
+00404         MOVE POB-CONTROL              TO WS-PUSOB-HOLD-1          PEXVS
+00405         MOVE POB-VO-BODYTYPE          TO WS-PUSOB-HOLD-BODY-TYPE  PEXVS
+00406         ADD WS-1                      TO WS-PUSOB-REC-READ.       PEXVS
+00407                                                                   PEXVS
+00408      IF WS-PUSOB-HOLD-KEY > WS-PUSOB-LAST-KEY                     PEXVS
+00409          MOVE WS-PUSOB-HOLD-KEY       TO WS-PUSOB-LAST-KEY        PEXVS
+00410        ELSE                                                       PEXVS
+00411          MOVE 'JOB ABORTING     '         TO AUDIT-MESSAGE        PEXVS
+00412          MOVE '='                         TO AUDIT-SEP            PEXVS
+00413          MOVE SPACES                      TO AUDIT-COUNT          PEXVS
+00414          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 2   PEXVS
+00415          MOVE 'PRIOR USOB FILE OUT OF   ' TO AUDIT-MESSAGE        PEXVS
+00416          MOVE SPACES                      TO AUDIT-SEP            PEXVS
+00417          MOVE 'SEQUENCE'                  TO AUDIT-COUNT          PEXVS
+00418          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 1   PEXVS
+00419          MOVE 'CURRENT RECORD KEY'        TO AUDIT-MESSAGE        PEXVS
+00420          MOVE '='                         TO AUDIT-SEP            PEXVS
+00421          MOVE WS-PUSOB-HOLD-KEY           TO AUDIT-COUNT          PEXVS
+00422          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 1   PEXVS
+00423          MOVE 'LAST RECORD KEY'           TO AUDIT-MESSAGE        PEXVS
+00424          MOVE '='                         TO AUDIT-SEP            PEXVS
+00425          MOVE WS-PUSOB-LAST-KEY           TO AUDIT-COUNT          PEXVS
+00426          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 1   PEXVS
+00427          PERFORM 9999-ABEND.                                      PEXVS
+00428                                                                   PEXVS
+00429 /                                                                 PEXVS
+00430  9900-EOJ.                                                        PEXVS
+00431 ******************************************************************PEXVS
+00432 *                                                                *PEXVS
+00433 *  DESCRIPTION: THIS PARAGRAPH CLOSES ALL FILES                  *PEXVS
+00434 *                                                                *PEXVS
+00435 ******************************************************************PEXVS
+00436                                                                   PEXVS
+00437      CLOSE     USOB-FILE-IN                                       PEXVS
+00438                PRIOR-USOB-FILE-IN                                 PEXVS
+00439                FIES-USOB-OUT                                      PEXVS
+00440                AUDIT-RPT-FILE.                                    PEXVS
+00441                                                                   PEXVS
+00442 /                                                                 PEXVS
+00443  9999-ABEND.                                                      PEXVS
+00444 ******************************************************************PEXVS
+00445 *                                                                *PEXVS
+00446 * DESCRIPTION:  CALL COREDUMP                                    *PEXVS
+00447 *                                                                *PEXVS
+00448 ******************************************************************PEXVS
+00449                                                                   PEXVS
+00450      CALL 'COREDUMP'.                                             PEXVS

@@ -1,0 +1,488 @@
+00001  IDENTIFICATION DIVISION.                                         PEXVS
+00002  PROGRAM-ID.   EXVS020.                                           PEXVS
+00003  AUTHOR.       CYNTHIA FORSYTH.                                   PEXVS
+00004  DATE-WRITTEN. AUGUST 1, 1990.                                    PEXVS
+00005  DATE-COMPILED.                                                   PEXVS
+00006                                                                   PEXVS
+00007 ***************************************************************** PEXVS
+00008 *                                                               * PEXVS
+00009 *   PROGRAM DESCRIPTION:  1.  COMPARES THE CURRENT TRAILER FILE * PEXVS
+00010 *                             WITH THE PRIOR TRAILER FILE       * PEXVS
+00011 *                         2.  CREATES A NEW TRAILER FILE        * PEXVS
+00012 *                                                               * PEXVS
+00013 * NOTE:  SOME TRAILER RECORDS CAN HAVE MULTIPLE RECORDS         * PEXVS
+00014 *        IE. TRAILER #24                                        * PEXVS
+00015 *                                                               * PEXVS
+00016 ***************************************************************** PEXVS
+00017 *                                                                 PEXVS
+00018  ENVIRONMENT DIVISION.                                            PEXVS
+00019 *                                                                 PEXVS
+00020  INPUT-OUTPUT SECTION.                                            PEXVS
+00021  FILE-CONTROL.                                                    PEXVS
+00022      SELECT TLR-FILE-IN             ASSIGN TLRIN.                 PEXVS
+00023      SELECT PRIOR-TLR-FILE-IN       ASSIGN PTLRIN.                PEXVS
+00024      SELECT FIES-TLR-OUT            ASSIGN TLROUT.                PEXVS
+00025      SELECT AUDIT-RPT-FILE          ASSIGN AUDIT.                 PEXVS
+00026 *                                                                 PEXVS
+00027  DATA DIVISION.                                                   PEXVS
+00028  FILE SECTION.                                                    PEXVS
+00029 *                                                                 PEXVS
+00030  FD  TLR-FILE-IN                                                  PEXVS
+00031      BLOCK CONTAINS 0 RECORDS                                     PEXVS
+00032      RECORD CONTAINS 307 CHARACTERS                               PEXVS
+00033      DATA RECORD IS TLR-REC-IN.                                   PEXVS
+00034 *                                                                 PEXVS
+00035  01  TLR-REC-IN                       PIC X(307).                 PEXVS
+00036 *                                                                 PEXVS
+00037  FD  PRIOR-TLR-FILE-IN                                            PEXVS
+00038      BLOCK CONTAINS 0 RECORDS                                     PEXVS
+00039      RECORD CONTAINS 307 CHARACTERS                               PEXVS
+00040      DATA RECORD IS PTLR-REC-IN.                                  PEXVS
+00041 *                                                                 PEXVS
+00042  01  PTLR-REC-IN                      PIC X(307).                 PEXVS
+00043 *                                                                 PEXVS
+00044  FD  FIES-TLR-OUT                                                 PEXVS
+00045      BLOCK CONTAINS 0 RECORDS                                     PEXVS
+00046      RECORD CONTAINS 307 CHARACTERS                               PEXVS
+00047      DATA RECORD IS TLR-REC-OUT.                                  PEXVS
+00048 *                                                                 PEXVS
+00049  01  TLR-REC-OUT                      PIC X(307).                 PEXVS
+00050                                                                   PEXVS
+00051  FD  AUDIT-RPT-FILE                                               PEXVS
+00052      BLOCK CONTAINS 0 RECORDS                                     PEXVS
+00053      RECORD CONTAINS 132 CHARACTERS                               PEXVS
+00054      DATA RECORD IS AUDIT-RECORD.                                 PEXVS
+00055 *                                                                 PEXVS
+00056  01  AUDIT-RECORD                     PIC X(132).                 PEXVS
+00057 *                                                                 PEXVS
+00058  WORKING-STORAGE SECTION.                                         PEXVS
+000585 77  PAN-VALET PICTURE X(24) VALUE '016PEXVS020  12/05/97'.       PEXVS
+00059  77  PRINT-PANVALET                   PIC  X(24).                 PEXVS
+00060 *                                                                 PEXVS
+00061  01  AUDIT-HEADER.                                                PEXVS
+00062      05  FILLER                       PIC X(05)  VALUE SPACES.    PEXVS
+00063      05  AUDIT-HEADING.                                           PEXVS
+00064          10  AUDIT-HEADING1           PIC X(18)  VALUE SPACES.    PEXVS
+00065          10  AUDIT-HEADING2           PIC X(109) VALUE SPACES.    PEXVS
+00066                                                                   PEXVS
+00067  01  AUDIT-DETAIL.                                                PEXVS
+00068      05  FILLER                       PIC X(05)  VALUE SPACES.    PEXVS
+00069      05  AUDIT-MESSAGE                PIC X(30)  VALUE SPACES.    PEXVS
+00070      05  AUDIT-SEP                    PIC X(03)  VALUE SPACES.    PEXVS
+00071      05  AUDIT-COUNT                  PIC X(94)  VALUE SPACES.    PEXVS
+00072                                                                   PEXVS
+00073  01  ORD-TLR-REC-LAYOUT.                                          PEXVS
+00074      05  OT-KEY.                                                  PEXVS
+00075          10  OT-MODEL-YR              PIC  X(02).                 PEXVS
+00076          10  OT-DIVISION              PIC  X(01).                 PEXVS
+00077          10  OT-DEALER.                                           PEXVS
+00078              15  OT-DIST              PIC  X(02).                 PEXVS
+00079              15  OT-DLR               PIC  X(03).                 PEXVS
+00080          10  OT-BODY                  PIC  X(03).                 PEXVS
+00081          10  OT-ITEM-1-6.                                         PEXVS
+00082              15  OT-ITEM              PIC  X(04).                 PEXVS
+00083              15  OT-ITEM-5-6          PIC  X(02).                 PEXVS
+00084          10  OT-TYPE                  PIC S9(04) COMP.            PEXVS
+00085      05  OT-FILLER                    PIC  X(29).                 PEXVS
+00086      05  OT-MDL-YR                    PIC  X(01).                 PEXVS
+00087      05  OT-9270-VL                   PIC  X(01).                 PEXVS
+00088      05  OT-FILLER2                   PIC  X(03).                 PEXVS
+00089      05  OT-TRAILER-RECORD            PIC  X(254).                PEXVS
+00090      05  OT-TRAILER-06-RECORD REDEFINES OT-TRAILER-RECORD.        PEXVS
+00091          10  OT-DATA1                 PIC  X(60).                 PEXVS
+00092          10  OT-19-DATA-1 REDEFINES OT-DATA1.                     PEXVS
+00093              15  OT-19-NUM-OF-UNITS   PIC  9(03).                 PEXVS
+00094              15  OT-19-DATA1          PIC  X(57).                 PEXVS
+00095          10  OT-DATA2                 PIC  X(97).                 PEXVS
+00096          10  OT-DATA3                 PIC  X(97).                 PEXVS
+00097 *                                                                 PEXVS
+00098  01  PRIOR-ORD-TLR-REC-LAYOUT.                                    PEXVS
+00099      05  POT-KEY.                                                 PEXVS
+00100          10  POT-MODEL-YR             PIC  X(02).                 PEXVS
+00101          10  POT-DIVISION             PIC  X(01).                 PEXVS
+00102          10  POT-DEALER.                                          PEXVS
+00103              15  POT-DIST             PIC  X(02).                 PEXVS
+00104              15  POT-DLR              PIC  X(03).                 PEXVS
+00105          10  POT-BODY                 PIC  X(03).                 PEXVS
+00106          10  POT-ITEM-1-6.                                        PEXVS
+00107              15  POT-ITEM             PIC  X(04).                 PEXVS
+00108              15  POT-ITEM-5-6         PIC  X(02).                 PEXVS
+00109          10  POT-TYPE                 PIC S9(04) COMP.            PEXVS
+00110      05  POT-FILLER                   PIC  X(29).                 PEXVS
+00111      05  POT-MDL-YR                   PIC  X(01).                 PEXVS
+00112      05  POT-9270-VL                  PIC  X(01).                 PEXVS
+00113      05  POT-FILLER2                  PIC  X(03).                 PEXVS
+00114      05  POT-TRAILER-RECORD           PIC  X(254).                PEXVS
+00115      05  POT-TRAILER-06-RECORD REDEFINES POT-TRAILER-RECORD.      PEXVS
+00116          10  POT-DATA1                PIC  X(60).                 PEXVS
+00117          10  POT-19-DATA1 REDEFINES POT-DATA1.                    PEXVS
+00118              15  POT-19-NUM-OF-UNITS  PIC  9(03).                 PEXVS
+00119              15  POT-19-DATA1         PIC  X(57).                 PEXVS
+00120          10  POT-DATA2                PIC  X(97).                 PEXVS
+00121          10  POT-DATA3                PIC  X(97).                 PEXVS
+00122 *                                                                 PEXVS
+00123  01  WS-WORK-DATE.                                                PEXVS
+00124      05  WS-DATE-YY                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00125      05  WS-DATE-MM                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00126      05  WS-DATE-DD                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00127 *                                                                 PEXVS
+00128  01  WS-WORK-TIME.                                                PEXVS
+00129      05  WS-TIME-HH                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00130      05  WS-TIME-MM                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00131      05  WS-TIME-SS                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00132      05  WS-TIME-HS                   PIC 9(02)  VALUE ZEROS.     PEXVS
+00133 *                                                                 PEXVS
+00134  01  WS-START-TIME.                                               PEXVS
+00135      05  WS-START-HH                  PIC Z9.                     PEXVS
+00136      05  WS-START-COL1                PIC X(01)  VALUE ':'.       PEXVS
+00137      05  WS-START-MM                  PIC 99.                     PEXVS
+00138      05  WS-START-COL2                PIC X(01)  VALUE ':'.       PEXVS
+00139      05  WS-START-SS                  PIC 99.                     PEXVS
+00140      05  WS-START-COL3                PIC X(01)  VALUE ':'.       PEXVS
+00141      05  WS-START-HS                  PIC 99.                     PEXVS
+00142 *                                                                 PEXVS
+00143  01  WS-END-TIME.                                                 PEXVS
+00144      05  WS-END-HH                    PIC Z9.                     PEXVS
+00145      05  WS-END-COL1                  PIC X(01)  VALUE ':'.       PEXVS
+00146      05  WS-END-MM                    PIC 99.                     PEXVS
+00147      05  WS-END-COL2                  PIC X(01)  VALUE ':'.       PEXVS
+00148      05  WS-END-SS                    PIC 99.                     PEXVS
+00149      05  WS-END-COL3                  PIC X(01)  VALUE ':'.       PEXVS
+00150      05  WS-END-HS                    PIC 99.                     PEXVS
+00151 *                                                                 PEXVS
+00152  01  WS-RUN-DATE.                                                 PEXVS
+00153      05  WS-RUN-MM                    PIC Z9.                     PEXVS
+00154      05  WS-SLASH1                    PIC X(01)  VALUE '/'.       PEXVS
+00155      05  WS-RUN-DD                    PIC 99.                     PEXVS
+00156      05  WS-SLASH2                    PIC X(01)  VALUE '/'.       PEXVS
+00157      05  WS-RUN-YY                    PIC 99.                     PEXVS
+00158 *                                                                 PEXVS
+00159  01  WS-TLR-HOLD-KEY.                                             PEXVS
+00160      05  WS-TLR-HOLD-PART1.                                       PEXVS
+00161          10  WS-TLR-HOLD-MODEL-YR     PIC X(02)  VALUE SPACES.    PEXVS
+00162          10  WS-TLR-HOLD-DIV          PIC X(01)  VALUE SPACES.    PEXVS
+00163          10  WS-TLR-HOLD-DIST         PIC X(02)  VALUE SPACES.    PEXVS
+00164          10  WS-TLR-HOLD-DLR          PIC X(03)  VALUE SPACES.    PEXVS
+00165          10  WS-TLR-HOLD-BODY         PIC X(03)  VALUE SPACES.    PEXVS
+00166          10  WS-TLR-HOLD-ITEM         PIC X(06)  VALUE SPACES.    PEXVS
+00167      05  WS-TLR-HOLD-PART2.                                       PEXVS
+00168          10  WS-TLR-HOLD-TYPE         PIC 9(04)  VALUE ZEROS.     PEXVS
+00169 *                                                                 PEXVS
+00170  01  WS-TLR-LAST-KEY.                                             PEXVS
+00171      05  WS-TLR-LAST-PART1            PIC X(17)  VALUE SPACES.    PEXVS
+00172      05  WS-TLR-LAST-PART2            PIC 9(04)  VALUE ZEROS.     PEXVS
+00173 *                                                                 PEXVS
+00174  01  WS-PTLR-HOLD-KEY.                                            PEXVS
+00175      05  WS-PTLR-HOLD-PART1.                                      PEXVS
+00176          10  WS-PTLR-HOLD-MODEL-YR    PIC X(02)  VALUE SPACES.    PEXVS
+00177          10  WS-PTLR-HOLD-DIV         PIC X(01)  VALUE SPACES.    PEXVS
+00178          10  WS-PTLR-HOLD-DIST        PIC X(02)  VALUE SPACES.    PEXVS
+00179          10  WS-PTLR-HOLD-DLR         PIC X(03)  VALUE SPACES.    PEXVS
+00180          10  WS-PTLR-HOLD-BODY        PIC X(03)  VALUE SPACES.    PEXVS
+00181          10  WS-PTLR-HOLD-ITEM        PIC X(06)  VALUE SPACES.    PEXVS
+00182      05  WS-PTLR-HOLD-PART2.                                      PEXVS
+00183          10  WS-PTLR-HOLD-TYPE        PIC 9(04)  VALUE ZEROS.     PEXVS
+00184 *                                                                 PEXVS
+00185  01  WS-PTLR-LAST-KEY.                                            PEXVS
+00186      05  WS-PTLR-LAST-PART1           PIC X(17)  VALUE SPACES.    PEXVS
+00187      05  WS-PTLR-LAST-PART2           PIC 9(04)  VALUE ZEROS.     PEXVS
+00188 *                                                                 PEXVS
+00189  01  WS-COUNTERS-N-CONSTANTS.                                     PEXVS
+00190      05  WS-TLR-REC-READ              PIC 9(06)  VALUE ZEROS.     PEXVS
+00191      05  WS-PTLR-REC-READ             PIC 9(06)  VALUE ZEROS.     PEXVS
+00192      05  WS-F-REC-WRIT                PIC 9(06)  VALUE ZEROS.     PEXVS
+00193      05  WS-1                         PIC 9(01)  VALUE 1.         PEXVS
+00194      05  WS-YES                       PIC X(01)  VALUE 'Y'.       PEXVS
+00195      05  WS-NO                        PIC X(01)  VALUE 'N'.       PEXVS
+00196 *                                                                 PEXVS
+00197  01  WS-SWITCHES.                                                 PEXVS
+00198      05  WS-TLR-EOF-SW                PIC X(01)  VALUE 'N'.       PEXVS
+00199          88  WS-TLR-EOF                          VALUE 'Y'.       PEXVS
+00200      05  WS-PTLR-EOF-SW               PIC X(01)  VALUE 'N'.       PEXVS
+00201          88  WS-PTLR-EOF                         VALUE 'Y'.       PEXVS
+00202 /                                                                 PEXVS
+00203  PROCEDURE DIVISION.                                              PEXVS
+00204  0000-MAINLINE.                                                   PEXVS
+00205 ****************************************************************  PEXVS
+00206 *                                                              *  PEXVS
+00207 *  DESCRIPTION:  MAIN PROCESSING                               *  PEXVS
+00208 *                                                              *  PEXVS
+00209 ****************************************************************  PEXVS
+00210                                                                   PEXVS
+00211      PERFORM 1000-HOUSEKEEPING.                                   PEXVS
+00212                                                                   PEXVS
+00213      PERFORM 7000-READ-TLR-FILE.                                  PEXVS
+00214                                                                   PEXVS
+00215      PERFORM 8000-READ-PTLR-FILE.                                 PEXVS
+00216                                                                   PEXVS
+00217      PERFORM 4000-PROCESS                                         PEXVS
+00218              UNTIL (WS-TLR-EOF AND WS-PTLR-EOF).                  PEXVS
+00219                                                                   PEXVS
+00220      PERFORM 9000-WRITE-AUDIT-REPORT.                             PEXVS
+00221                                                                   PEXVS
+00222      PERFORM 9900-EOJ.                                            PEXVS
+00223                                                                   PEXVS
+00224      GOBACK.                                                      PEXVS
+00225                                                                   PEXVS
+00226 /                                                                 PEXVS
+00227  1000-HOUSEKEEPING.                                               PEXVS
+00228 ******************************************************************PEXVS
+00229 *                                                                *PEXVS
+00230 *  DESCRIPTION:  THIS PARAGRAPH OPENS THE FILES AND ACCEPTS      *PEXVS
+00231 *                THE DATE AND TIME.                              *PEXVS
+00232 *                                                                *PEXVS
+00233 ******************************************************************PEXVS
+00234                                                                   PEXVS
+00235      OPEN INPUT        TLR-FILE-IN                                PEXVS
+00236                        PRIOR-TLR-FILE-IN                          PEXVS
+00237           OUTPUT       FIES-TLR-OUT                               PEXVS
+00238                        AUDIT-RPT-FILE.                            PEXVS
+00239                                                                   PEXVS
+00240      MOVE WS-NO                       TO WS-TLR-EOF-SW.           PEXVS
+00241      MOVE WS-NO                       TO WS-PTLR-EOF-SW.          PEXVS
+00242                                                                   PEXVS
+00243      ACCEPT WS-WORK-TIME  FROM   TIME.                            PEXVS
+00244      MOVE WS-TIME-HH                  TO WS-START-HH.             PEXVS
+00245      MOVE WS-TIME-MM                  TO WS-START-MM.             PEXVS
+00246      MOVE WS-TIME-SS                  TO WS-START-SS.             PEXVS
+00247      MOVE WS-TIME-HS                  TO WS-START-HS.             PEXVS
+00248                                                                   PEXVS
+00249      ACCEPT WS-WORK-DATE  FROM   DATE.                            PEXVS
+00250      MOVE WS-DATE-YY                  TO WS-RUN-YY.               PEXVS
+00251      MOVE WS-DATE-MM                  TO WS-RUN-MM.               PEXVS
+00252      MOVE WS-DATE-DD                  TO WS-RUN-DD.               PEXVS
+00253                                                                   PEXVS
+00254      MOVE 'PGM VERSION - C -'         TO AUDIT-HEADING1.          PEXVS
+00255      MOVE PAN-VALET                   TO AUDIT-HEADING2.          PEXVS
+00256      WRITE AUDIT-RECORD FROM AUDIT-HEADER.                        PEXVS
+00257                                                                   PEXVS
+00258      MOVE 'EXVS020 AUDIT REPORT'      TO AUDIT-HEADING.           PEXVS
+00259      WRITE AUDIT-RECORD FROM AUDIT-HEADER.                        PEXVS
+00260                                                                   PEXVS
+00261      MOVE 'PROGRAM RUN DATE '         TO AUDIT-MESSAGE.           PEXVS
+00262      MOVE '='                         TO AUDIT-SEP.               PEXVS
+00263      MOVE WS-RUN-DATE                 TO AUDIT-COUNT.             PEXVS
+00264      WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 2.      PEXVS
+00265                                                                   PEXVS
+00266      MOVE 'PROGRAM START TIME'        TO AUDIT-MESSAGE.           PEXVS
+00267      MOVE WS-START-TIME               TO AUDIT-COUNT.             PEXVS
+00268      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00269                                                                   PEXVS
+00270 /                                                                 PEXVS
+00271  4000-PROCESS.                                                    PEXVS
+00272 ******************************************************************PEXVS
+00273 *                                                                *PEXVS
+00274 *   DESCRIPTION:  THIS PARAGRAPH PROCESSES ALL INPUT RECORDS     *PEXVS
+00275 *                 UNTIL END OF FILE.                             *PEXVS
+00276 *                                                                *PEXVS
+00277 ******************************************************************PEXVS
+00278                                                                   PEXVS
+00279      IF WS-TLR-HOLD-KEY   =  WS-PTLR-HOLD-KEY                     PEXVS
+00280         PERFORM 4100-SEARCH-EQUAL-KEY                             PEXVS
+00281      ELSE                                                         PEXVS
+00282          IF WS-TLR-HOLD-KEY < WS-PTLR-HOLD-KEY                    PEXVS
+00283             PERFORM 4200-SEARCH-LESS-KEY                          PEXVS
+00284          ELSE                                                     PEXVS
+00285              IF WS-TLR-HOLD-KEY > WS-PTLR-HOLD-KEY                PEXVS
+00286                 PERFORM 4300-SEARCH-GREAT-KEY.                    PEXVS
+00287                                                                   PEXVS
+00288 /                                                                 PEXVS
+00289  4100-SEARCH-EQUAL-KEY.                                           PEXVS
+00290 ******************************************************************PEXVS
+00291 *                                                                *PEXVS
+00292 * DESCRIPTION: THIS PARAGRAPH IS EXECUTED IF THE KEYS ARE EQUAL  *PEXVS
+00293 *                                                                *PEXVS
+00294 ******************************************************************PEXVS
+00295                                                                   PEXVS
+00296      IF OT-TRAILER-RECORD NOT = POT-TRAILER-RECORD                PEXVS
+00297         PERFORM 5000-WRITE-FIES-EXTRACT.                          PEXVS
+00298                                                                   PEXVS
+00299      PERFORM 7000-READ-TLR-FILE.                                  PEXVS
+00300                                                                   PEXVS
+00301      PERFORM 8000-READ-PTLR-FILE.                                 PEXVS
+00302                                                                   PEXVS
+00303 /                                                                 PEXVS
+00304  4200-SEARCH-LESS-KEY.                                            PEXVS
+00305 ******************************************************************PEXVS
+00306 *                                                                *PEXVS
+00307 *  DESCRIPTION: THIS PARAGRAPH IS EXECUTED IF THE                *PEXVS
+00308 *               TLR KEY < PTLR KEY                               *PEXVS
+00309 *                                                                *PEXVS
+00310 ******************************************************************PEXVS
+00311                                                                   PEXVS
+00312      PERFORM 5000-WRITE-FIES-EXTRACT.                             PEXVS
+00313                                                                   PEXVS
+00314      PERFORM 7000-READ-TLR-FILE.                                  PEXVS
+00315                                                                   PEXVS
+00316 /                                                                 PEXVS
+00317  4300-SEARCH-GREAT-KEY.                                           PEXVS
+00318 ******************************************************************PEXVS
+00319 *                                                                *PEXVS
+00320 *  DESCRIPTION: THIS PARAGRAPH IS EXECUTED IF                    *PEXVS
+00321 *               TLR KEY > PTLR KEY                               *PEXVS
+00322 *                                                                *PEXVS
+00323 ******************************************************************PEXVS
+00324                                                                   PEXVS
+00325      PERFORM 8000-READ-PTLR-FILE.                                 PEXVS
+00326                                                                   PEXVS
+00327 /                                                                 PEXVS
+00328  5000-WRITE-FIES-EXTRACT.                                         PEXVS
+00329 ******************************************************************PEXVS
+00330 *                                                                *PEXVS
+00331 *  DESCRIPTION: THIS PARAGRAPH WRITES THE FIES EXTRACT RECORDS.  *PEXVS
+00332 *                                                                *PEXVS
+00333 ******************************************************************PEXVS
+00334                                                                   PEXVS
+00335 *  THE FOLLOWING ONLY ALLOWS TRAILERS THAT ARE 6, 16, OR 19       PEXVS
+00336 *  TO BE WRITTEN TO THE EXTRACT FILE                              PEXVS
+00337                                                                   PEXVS
+00338 *  TRAILER TYPE '06' CONTAINS SHIP TO DEALER INFORMATION          PEXVS
+00339 *  TRAILER TYPE '16' CONTAINS NOTES INFORMATION                   PEXVS
+00340 *  TRAILER TYPE '19' CONTAINS DSO INFORMATION                     PEXVS
+00341                                                                   PEXVS
+00342      IF WS-TLR-HOLD-TYPE = 6 OR WS-TLR-HOLD-TYPE = 16 OR          PEXVS
+00343         WS-TLR-HOLD-TYPE = 19 OR WS-TLR-HOLD-TYPE = 11            PEXVS
+00344         ADD 1                            TO WS-F-REC-WRIT         PEXVS
+00345         MOVE SPACES                      TO TLR-REC-OUT           PEXVS
+00346         WRITE TLR-REC-OUT FROM ORD-TLR-REC-LAYOUT.                PEXVS
+00347 /                                                                 PEXVS
+00348  7000-READ-TLR-FILE.                                              PEXVS
+00349 ******************************************************************PEXVS
+00350 *                                                                *PEXVS
+00351 *  DESCRIPTION: THIS PARAGRAPH READS THE TLR INPUT FILE          *PEXVS
+00352 *                                                                *PEXVS
+00353 ******************************************************************PEXVS
+00354                                                                   PEXVS
+00355      READ TLR-FILE-IN      INTO  ORD-TLR-REC-LAYOUT               PEXVS
+00356          AT END                                                   PEXVS
+00357              MOVE WS-YES              TO WS-TLR-EOF-SW            PEXVS
+00358              MOVE HIGH-VALUES         TO WS-TLR-HOLD-KEY.         PEXVS
+00359                                                                   PEXVS
+00360      IF NOT WS-TLR-EOF                                            PEXVS
+00361         MOVE OT-MODEL-YR              TO WS-TLR-HOLD-MODEL-YR     PEXVS
+00362         MOVE OT-DIVISION              TO WS-TLR-HOLD-DIV          PEXVS
+00363         MOVE OT-DIST                  TO WS-TLR-HOLD-DIST         PEXVS
+00364         MOVE OT-DLR                   TO WS-TLR-HOLD-DLR          PEXVS
+00365         MOVE OT-BODY                  TO WS-TLR-HOLD-BODY         PEXVS
+00366         MOVE OT-ITEM-1-6              TO WS-TLR-HOLD-ITEM         PEXVS
+00367         MOVE OT-TYPE                  TO WS-TLR-HOLD-TYPE         PEXVS
+00368         ADD WS-1                      TO WS-TLR-REC-READ.         PEXVS
+00369                                                                   PEXVS
+00370      IF WS-TLR-HOLD-KEY > WS-TLR-LAST-KEY OR                      PEXVS
+00371         WS-TLR-HOLD-KEY = WS-TLR-LAST-KEY                         PEXVS
+00372          MOVE WS-TLR-HOLD-PART1       TO WS-TLR-LAST-PART1        PEXVS
+00373          MOVE WS-TLR-HOLD-PART2       TO WS-TLR-LAST-PART2        PEXVS
+00374        ELSE                                                       PEXVS
+00375          MOVE 'JOB ABORTING     '           TO AUDIT-MESSAGE      PEXVS
+00376          MOVE '='                           TO AUDIT-SEP          PEXVS
+00377          MOVE 'TLR FILE OUT OF SEQUENCE'    TO AUDIT-COUNT        PEXVS
+00378          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 2   PEXVS
+00379          MOVE 'CURRENT RECORD KEY   '       TO AUDIT-MESSAGE      PEXVS
+00380          MOVE '='                           TO AUDIT-SEP          PEXVS
+00381          MOVE WS-TLR-HOLD-KEY               TO AUDIT-COUNT        PEXVS
+00382          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 1   PEXVS
+00383          MOVE 'LAST RECORD KEY '            TO AUDIT-MESSAGE      PEXVS
+00384          MOVE '='                           TO AUDIT-SEP          PEXVS
+00385          MOVE WS-TLR-LAST-KEY               TO AUDIT-COUNT        PEXVS
+00386          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 1   PEXVS
+00387          PERFORM 9999-ABEND.                                      PEXVS
+00388                                                                   PEXVS
+00389 /                                                                 PEXVS
+00390  8000-READ-PTLR-FILE.                                             PEXVS
+00391 ******************************************************************PEXVS
+00392 *                                                                *PEXVS
+00393 *  DESCRIPTION: THIS PARAGRAPH READS THE PRIOR TLR INPUT FILE    *PEXVS
+00394 *                                                                *PEXVS
+00395 ******************************************************************PEXVS
+00396                                                                   PEXVS
+00397      READ PRIOR-TLR-FILE-IN INTO PRIOR-ORD-TLR-REC-LAYOUT         PEXVS
+00398          AT END                                                   PEXVS
+00399              MOVE WS-YES              TO WS-PTLR-EOF-SW           PEXVS
+00400              MOVE HIGH-VALUES         TO WS-PTLR-HOLD-KEY.        PEXVS
+00401                                                                   PEXVS
+00402      IF NOT WS-PTLR-EOF                                           PEXVS
+00403         MOVE POT-MODEL-YR             TO WS-PTLR-HOLD-MODEL-YR    PEXVS
+00404         MOVE POT-DIVISION             TO WS-PTLR-HOLD-DIV         PEXVS
+00405         MOVE POT-DIST                 TO WS-PTLR-HOLD-DIST        PEXVS
+00406         MOVE POT-DLR                  TO WS-PTLR-HOLD-DLR         PEXVS
+00407         MOVE POT-BODY                 TO WS-PTLR-HOLD-BODY        PEXVS
+00408         MOVE POT-ITEM-1-6             TO WS-PTLR-HOLD-ITEM        PEXVS
+00409         MOVE POT-TYPE                 TO WS-PTLR-HOLD-TYPE        PEXVS
+00410         ADD WS-1                      TO WS-PTLR-REC-READ.        PEXVS
+00411                                                                   PEXVS
+00412      IF WS-PTLR-HOLD-KEY > WS-PTLR-LAST-KEY OR                    PEXVS
+00413         WS-PTLR-HOLD-KEY = WS-PTLR-LAST-KEY                       PEXVS
+00414          MOVE WS-PTLR-HOLD-PART1      TO WS-PTLR-LAST-PART1       PEXVS
+00415          MOVE WS-PTLR-HOLD-PART2      TO WS-PTLR-LAST-PART2       PEXVS
+00416        ELSE                                                       PEXVS
+00417          MOVE 'JOB ABORTING = PRIOR TLR'    TO AUDIT-MESSAGE      PEXVS
+00418          MOVE SPACE                         TO AUDIT-SEP          PEXVS
+00419          MOVE 'OUT OF SEQUENCE         '    TO AUDIT-COUNT        PEXVS
+00420          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 2   PEXVS
+00421          MOVE 'CURRENT RECORD KEY   '       TO AUDIT-MESSAGE      PEXVS
+00422          MOVE '='                           TO AUDIT-SEP          PEXVS
+00423          MOVE WS-PTLR-HOLD-KEY              TO AUDIT-COUNT        PEXVS
+00424          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 1   PEXVS
+00425          MOVE 'LAST RECORD KEY '            TO AUDIT-MESSAGE      PEXVS
+00426          MOVE '='                           TO AUDIT-SEP          PEXVS
+00427          MOVE WS-PTLR-LAST-KEY              TO AUDIT-COUNT        PEXVS
+00428          WRITE AUDIT-RECORD FROM AUDIT-DETAIL AFTER ADVANCING 1   PEXVS
+00429          PERFORM 9999-ABEND.                                      PEXVS
+00430                                                                   PEXVS
+00431 /                                                                 PEXVS
+00432  9000-WRITE-AUDIT-REPORT.                                         PEXVS
+00433 ******************************************************************PEXVS
+00434 *                                                                *PEXVS
+00435 *  DESCRIPTION: THIS PARAGRAPH WRITES THE AUDIT REPORT           *PEXVS
+00436 *                                                                *PEXVS
+00437 ******************************************************************PEXVS
+00438                                                                   PEXVS
+00439      ACCEPT WS-WORK-TIME  FROM   TIME.                            PEXVS
+00440      MOVE WS-TIME-HH                  TO WS-END-HH.               PEXVS
+00441      MOVE WS-TIME-MM                  TO WS-END-MM.               PEXVS
+00442      MOVE WS-TIME-SS                  TO WS-END-SS.               PEXVS
+00443      MOVE WS-TIME-HS                  TO WS-END-HS.               PEXVS
+00444                                                                   PEXVS
+00445      MOVE 'USOB TLR CURRENT REC READ' TO AUDIT-MESSAGE.           PEXVS
+00446      MOVE WS-TLR-REC-READ             TO AUDIT-COUNT.             PEXVS
+00447      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00448                                                                   PEXVS
+00449      MOVE 'USOB PRIOR TLR REC READ '  TO AUDIT-MESSAGE.           PEXVS
+00450      MOVE WS-PTLR-REC-READ            TO AUDIT-COUNT.             PEXVS
+00451      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00452                                                                   PEXVS
+00453      MOVE 'USOB TLR RECORDS WRITTEN'  TO AUDIT-MESSAGE.           PEXVS
+00454      MOVE WS-F-REC-WRIT               TO AUDIT-COUNT.             PEXVS
+00455      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00456                                                                   PEXVS
+00457      MOVE 'PROGRAM COMPLETION TIME'   TO AUDIT-MESSAGE.           PEXVS
+00458      MOVE WS-END-TIME                 TO AUDIT-COUNT.             PEXVS
+00459      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00460                                                                   PEXVS
+00461      MOVE SPACES                      TO AUDIT-DETAIL.            PEXVS
+00462      MOVE 'EXVS020 ENDED SUCCESSFULLY'  TO AUDIT-MESSAGE.         PEXVS
+00463      MOVE SPACES                      TO AUDIT-COUNT.             PEXVS
+00464      WRITE AUDIT-RECORD FROM AUDIT-DETAIL.                        PEXVS
+00465                                                                   PEXVS
+00466 /                                                                 PEXVS
+00467  9900-EOJ.                                                        PEXVS
+00468 ******************************************************************PEXVS
+00469 *                                                                *PEXVS
+00470 *  DESCRIPTION: THIS PARAGRAPH CLOSES ALL FILES                  *PEXVS
+00471 *                                                                *PEXVS
+00472 ******************************************************************PEXVS
+00473                                                                   PEXVS
+00474      CLOSE     TLR-FILE-IN                                        PEXVS
+00475                PRIOR-TLR-FILE-IN                                  PEXVS
+00476                FIES-TLR-OUT                                       PEXVS
+00477                AUDIT-RPT-FILE.                                    PEXVS
+00478                                                                   PEXVS
+00479 /                                                                 PEXVS
+00480  9999-ABEND.                                                      PEXVS
+00481 ******************************************************************PEXVS
+00482 *                                                                *PEXVS
+00483 * DESCRIPTION:  CALL COREDUMP                                    *PEXVS
+00484 *                                                                *PEXVS
+00485 ******************************************************************PEXVS
+00486                                                                   PEXVS
+00487      CALL 'COREDUMP'.                                             PEXVS

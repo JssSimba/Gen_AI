@@ -1,0 +1,482 @@
+//FDEX@100 JOB (1,50249,FBP3-107),'APPL-MSA',MSGCLASS=N,                00010000
+//         USER=FDEX9BT                                                 00020000
+//*                                                                     00030000
+//*MAIN    CLASS=IMS2BMP,FAILURE=CANCEL,LINES=(0100,W)                  00040000
+//  JCLLIB ORDER=FDTS.PROCLIB                                           00050000
+//*                                                                     00060000
+//JOBLIB   DD  DSN=FDPV.PANEXEC.PRODLIB,                                00110000
+//             DISP=SHR                                                 00120000
+//*                                                                     00130000
+//*******************************************************************   00140000
+//*                                                                     00150000
+//* FDEX.PROD.EVS.JCL(FDEX@100)                                         00160000
+//*                                                                     00170000
+//* DESCRIPTION:  UPDATES THE MEXA001MSTR TABLE WITH UNSCHEDULED        00180000
+//*               ORDER BANK INFORMATION                                00190000
+//*                                                                     00200000
+//*      STEPNAME DESCRIPTION                                           00210000
+//*      -------- -----------                                           00220000
+//*      FDEX0010 SORTS 'FDOP' USOB FILES                               00230000
+//*      FDEX0020 SORTS USOB TRAILER FILES                              00240000
+//*      FDEX0030 EXECUTES EXVS000 TO PROCESS ONLY CHANGED              00250000
+//*               RECORDS (THIS PROGRAM ALSO CANCELS ANY RECORDS        00260000
+//*               THAT ARE ON THE PRIOR FILE AND NOT ON THE             00270000
+//*               CURRENT FILE)                                         00280000
+//*      FDEX0040 EXECUTES EXVS100 TO UPDATE MEXA001MSTR TABLE          00300000
+//*      FDEX0050 COPY USOBCHGS TO GDG                                  00310000
+//*      FDEX0060 COPY EXVS100 AUDIT REPORT TO GDG                      00320000
+//*      FDEX0070 COPY EXVS100 ERROR REPORT TO GDG                      00330000
+//*      FDEX0080 COPY EXVS100 AUDIT REPORT TO RMDS                     00340000
+//*      FDEX0090 CREATES EMPTY AUDIT AND ERROR FILES FOR EXVS100       00360000
+//*      FDEX0100 EXECUTES EXVS020 TO PROCESS ONLY CHANGED              00370000
+//*               RECORDS                                               00380000
+//*      FDEX0110 CREATES EMPTY ERROR AND AUDIT FILES FOR EXVS120       00400000
+//*      FDEX0120 EXECUTES EXVS120 TO UPDATE MEXA001MSTR TABLE          00410000
+//*      FDEX0130 COPY UTLRCHGS TO GDG                                  00420000
+//*      FDEX0140 COPY EXVS120 AUDIT REPORT TO GDG                      00430000
+//*      FDEX0150 COPY EXVS120 ERROR REPORT TO GDG                      00440000
+//*      FDEX0160 COPY EXVS120 AUDIT REPORT TO RMDS                     00450000
+//*      FDEX0170 COPY EXVS120 ERROR REPORT TO RMDS                     00460000
+//*      FDEX0180 COPY UNFORMATTED INPUT 1 FROM MEXW0010 TO GDG         00460000
+//*      FDEX0190 COPY UNFORMATTED INPUT 2 FROM MEXW0010 TO GDG         00460000
+//*      FDEX0200 COPY UNFORMATTED INPUT 1 FROM MEXW0020 TO GDG         00460000
+//*      FDEX0210 COPY UNFORMATTED INPUT 2 FROM MEXW0020 TO GDG         00460000
+//*      FDEX0220 PREVENT DB2 DEADLOCKS                                 00490000
+//*      FDEXDUMY FORCE LAST STEP'S RETURN CODE TO ZERO                 00500000
+//******************** MODIFICATION LOG ********************************00520100
+//*                                                                    *00520200
+//* DATE : 02/21/2006     PROGRAMMER : RAVI CHINNARAJ                  *00520300
+//* REASON : REMOVED GREEN BAR REPORT PRINTING AT LASON                *00520400
+//*          ETRACKER 2984400                                          *00520410
+//*          STEPS FDEX0180 AND FDEX0190 REMOVED                       *00520500
+//*          STEPS FDEX0200 RENAMED TO FDEX0180                        *00520600
+//*                                                                    *
+//* DATE : 04/06/2015     PROGRAMMER : MARK FALLOT                     *00520300
+//* REASON : ETRACKER 13318473                                         *00520410
+//*          REMOVE XRSTMSA= PARM FROM IMSBATCH AND ADD XRSTFILE DD.   *
+//*                                                                    *
+//*                                                                    *
+//* DATE : 03/20/2018     PROGRAMMER : DAWN MAHN                       *00520300
+//* ETRACKER: 15391479                                                 *
+//* REASON : RENAME THE EXISTING FDEX0180 STEP TO FDEX0220.            *
+//*                                                                    *
+//*          ADD STEPS FDEX0180, FDEX0190, FDEX0200, AND FDEX0210      *
+//*          TO BACKUP DATASETS:                                       *
+//*              FDOP.FRPFD040.OERP200.OBEXPORT.DATASQ                 *
+//*              FDOP.LRPLM040.OERP200.OBEXPORT.DATASQ                 *
+//*              FDOP.FRPFD040.OERP200.OTEXPORT.DATASQ                 *
+//*              FDOP.LRPLM040.OERP200.OTEXPORT.DATASQ                 *
+//*                                                                    *
+//*          REMOVE THE FORMAT STATEMENTS IN THE JOB CARD.  THE        *
+//*          ORIGINAL FDEX0180 AND FDEX0190 STEPS WERE REMOVED IN 2006.*
+//**********************************************************************00005000
+//*                                                                     00150000
+//**********************************************************************00530000
+//*  SORT 'FDOP' USOB FILES                                            *00540000
+//**********************************************************************00550000
+//*                                                                     00150000
+//FDEX0010 EXEC  PGM=SORT                                               00560000
+//SORTIN   DD  DSN=FDOP.FRPFD040.OERP200.OBEXPORT.DATASQ,               00570000
+//             DISP=SHR                                                 00580000
+//         DD  DSN=FDOP.LRPLM040.OERP200.OBEXPORT.DATASQ,               00590000
+//             DISP=SHR                                                 00600000
+//SORTOUT  DD  DSN=FDEX.PROD.EXVS000.USOBSORT(+1),                      00610000
+//             DISP=(NEW,CATLG,DELETE),                                 00620000
+//             DCB=(DSORG=PS,RECFM=FB,LRECL=0393,BLKSIZE=23187),        00630000
+//             SPACE=(TRK,(500,100),RLSE)                               00640000
+//SYSOUT   DD  SYSOUT=*                                                 00650000
+//SYSPRINT DD  SYSOUT=*                                                 00660000
+//SORTMSG  DD  SYSOUT=*                                                 00670000
+//SORTWK01 DD  SPACE=(CYL,50)                                           00680000
+//SORTWK02 DD  SPACE=(CYL,50)                                           00690000
+//SORTWK03 DD  SPACE=(CYL,50)                                           00700000
+//SORTWK04 DD  SPACE=(CYL,50)                                           00710000
+//SORTWK05 DD  SPACE=(CYL,50)                                           00720000
+//SYSIN    DD  *                                                        00730000
+  SORT FIELDS=(1,14,CH,A,60,3,CH,A)                                     00740000
+  INCLUDE COND=((60,3,NE,C'T08',AND,60,3,NE,C'T09'),AND,                00750000
+               (60,3,NE,C'T32',AND,60,3,NE,C'T33'),AND,                 00750101
+               (4,1,EQ,C'9',OR,                                         00751000
+                4,2,EQ,C'M1',OR,                                        00760000
+                4,2,EQ,C'M2',OR,                                        00770000
+                4,2,EQ,C'M3',OR,                                        00780000
+                4,2,EQ,C'M4',OR,                                        00790000
+                4,2,EQ,C'M5',OR,                                        00800000
+                4,2,EQ,C'M6',OR,                                        00810000
+                4,2,EQ,C'M7')),FORMAT=CH                                00820000
+/*                                                                      00830000
+//*                                                                     00840000
+//**********************************************************************00530000
+//*  SORT 'FDOP' USOB TRAILER FILES                                    *00860000
+//**********************************************************************00530000
+//*                                                                     00150000
+//FDEX0020 EXEC  PGM=SORT                                               00880000
+//SORTIN   DD  DSN=FDOP.FRPFD040.OERP200.OTEXPORT.DATASQ,               00890000
+//             DISP=SHR                                                 00900000
+//         DD  DSN=FDOP.LRPLM040.OERP200.OTEXPORT.DATASQ,               00910000
+//             DISP=SHR                                                 00920000
+//SORTOUT  DD  DSN=FDEX.PROD.EXVS020.UTLRSORT(+1),                      00930000
+//             DISP=(NEW,CATLG,DELETE),                                 00940000
+//             DCB=(DSORG=PS,RECFM=FB,LRECL=0307,BLKSIZE=23332),        00950000
+//             SPACE=(TRK,(500,100),RLSE)                               00960000
+//SYSOUT   DD  SYSOUT=*                                                 00970000
+//SYSPRINT DD  SYSOUT=*                                                 00980000
+//SORTMSG  DD  SYSOUT=*                                                 00990000
+//SORTWK01 DD  SPACE=(CYL,50)                                           01000000
+//SORTWK02 DD  SPACE=(CYL,50)                                           01010000
+//SORTWK03 DD  SPACE=(CYL,50)                                           01020000
+//SORTWK04 DD  SPACE=(CYL,50)                                           01030000
+//SORTWK05 DD  SPACE=(CYL,50)                                           01040000
+//SYSIN    DD  *                                                        01050000
+ SORT FIELDS=(1,16,CH,A,18,2,BI,A)                                      01060000
+ INCLUDE COND=((9,3,CH,NE,C'T08',AND,9,3,CH,NE,C'T09'),AND,             01070000
+              (9,3,CH,NE,C'T32',AND,9,3,CH,NE,C'T33'),AND,              01070101
+              (1,2,CH,NE,C'  ',AND,(4,1,CH,EQ,C'9',                     01071000
+               OR,4,2,CH,EQ,C'M1',                                      01080000
+               OR,4,2,CH,EQ,C'M2',                                      01090000
+               OR,4,2,CH,EQ,C'M3',                                      01100000
+               OR,4,2,CH,EQ,C'M4',                                      01110000
+               OR,4,2,CH,EQ,C'M5',                                      01120000
+               OR,4,2,CH,EQ,C'M6',                                      01130000
+               OR,4,2,CH,EQ,C'M7'),                                     01140000
+ AND,(18,2,BI,EQ,X'0006',OR,                                            01150000
+      18,2,BI,EQ,X'000B',OR,                                            01160000
+      18,2,BI,EQ,X'0010',OR,                                            01170000
+      18,2,BI,EQ,X'0013')))                                             01180000
+/*                                                                      01190000
+//*                                                                     01200000
+//**********************************************************************00530000
+//* THE FOLLOWING PROGRAM IS USED TO COMPARE THE CURRENT               *01220000
+//* SORTED USOB FILE WITH THE PRIOR DAY  SORTED USOB FILE              *01230000
+//* AND PASS ANY CHANGES TO EXVS100. (NOTE: THIS PROGRAM ALSO          *01240000
+//* CANCELS ANY RECORDS THAT ARE ON THE PRIOR SORTED FILE AND          *01250000
+//* ARE NOT ON THE CURRENT SORTED USOB FILE.)                          *01260000
+//*                        C.L. FORSYTH         10/10/91               *01270000
+//**********************************************************************00530000
+//*                                                                     01200000
+//FDEX0030 EXEC  PGM=EXVS000                                            01290000
+//USOBIN   DD  DSN=FDEX.PROD.EXVS000.USOBSORT(+1),                      01300000
+//             DISP=SHR                                                 01310000
+//PUSOBIN  DD  DSN=FDEX.PROD.EXVS000.USOBSORT(0),                       01320000
+//             DISP=SHR                                                 01330000
+//USOBOUT  DD  DSN=FDEX.PROD.EXVS000.USOBCHGS.DATA,                     01340000
+//             DISP=(NEW,CATLG,DELETE),                                 01350000
+//             DCB=(DSORG=PS,RECFM=FB,LRECL=0393,BLKSIZE=23187),        01360000
+//             SPACE=(TRK,(500,100),RLSE)                               01370000
+//AUDIT    DD  DSN=FDEX.PROD.EXVS000.AUDIT(+1),                         01380000
+//             DISP=(NEW,CATLG),                                        01390000
+//             DCB=(DSORG=PS,RECFM=FB,LRECL=0133,BLKSIZE=13300),        01400000
+//             SPACE=(TRK,(100,100),RLSE)                               01410000
+//SYSIN    DD  DUMMY                                                    01420000
+//SYSOUT   DD  SYSOUT=*                                                 01430000
+//SYSUDUMP DD  SYSOUT=*                                                 01440000
+//SYSPRINT DD  SYSOUT=*                                                 01450000
+//*                                                                     01460000
+//**********************************************************************00530000
+//*  CREATES EMPTY AUDIT AND ERROR FILES FOR EXVS100                   *01610000
+//**********************************************************************00530000
+//*                                                                     01460000
+//FDEX0040 EXEC  PGM=IEBGENER                                           01630000
+//SYSUT1   DD  DUMMY                                                    01640000
+//SYSUT2   DD  DSN=FDEX.PROD.EXVS100.AUDIT.DATA,                        01650000
+//             DISP=(NEW,CATLG,DELETE),                                 01660000
+//             DCB=(DSORG=PS,LRECL=133,BLKSIZE=23408,RECFM=FBA),        01670000
+//             SPACE=(TRK,(100,100),RLSE)                               01680000
+//SYSUT3   DD  DSN=FDEX.PROD.EXVS100.ERROR.DATA,                        01690000
+//             DISP=(NEW,CATLG,DELETE),                                 01700000
+//             DCB=(DSORG=PS,LRECL=133,BLKSIZE=23408,RECFM=FBA),        01710000
+//             SPACE=(TRK,(100,100),RLSE)                               01720000
+//SYSIN    DD  DUMMY                                                    01730000
+//SYSPRINT DD  SYSOUT=*                                                 01740000
+//*                                                                     01750000
+//**********************************************************************00530000
+//*  RUN EXVS100 PROGRAM                                               *01770000
+//**********************************************************************00530000
+//*                                                                     01750000
+//FDEX0050 EXEC  IMSBATCH,                                              01790000
+//             MBR=EXVS100,PSB=EXVS100,SID=2,SSM=DB22,                  01800000
+//             BMPXRST=,AGN=FDAEXVS1                                    01810000
+//STEPLIB  DD                                                           01820000
+//         DD                                                           01830000
+//         DD  DSN=FDPV.PANEXEC.PRODLIB,                                01840000
+//             DISP=SHR                                                 01850000
+//MDEXG100 DD  DSN=FDEX.PROD.EXVS000.USOBCHGS.DATA,              *GSAM* 01860000
+//             DISP=SHR                                                 01870000
+//MDEXG101 DD  DSN=FDEX.PROD.EXVS100.AUDIT.DATA,                 *GSAM* 01880000
+//             DISP=(OLD,KEEP,KEEP)                                     01890000
+//MDEXG102 DD  DSN=FDEX.PROD.EXVS100.ERROR.DATA,                 *GSAM* 01900000
+//             DISP=(OLD,KEEP,KEEP)                                     01910000
+//XRSTFILE DD  DSN=FDEX.WW.PROD.XRST.EXVS100,                           01900000
+//             DISP=OLD                                                 01910000
+//PARMFILE DD  DUMMY                                                    01920000
+//SYSUDUMP DD  SYSOUT=*                                                 01930000
+//SYSOUT   DD  SYSOUT=*                                                 01940000
+//*                                                                     01950000
+//**********************************************************************00530000
+//*  COPY USOBCHGS TO GDG                                              *01970000
+//**********************************************************************00530000
+//*                                                                     01950000
+//FDEX0060 EXEC  PGM=IEBGENER                                           01990000
+//SYSUT1   DD  DSN=FDEX.PROD.EXVS000.USOBCHGS.DATA,                     02000000
+//             DISP=SHR                                                 02010000
+//SYSUT2   DD  DSN=FDEX.PROD.EXVS000.USOBCHGS(+1),                      02020000
+//             DISP=(NEW,CATLG,CATLG),                                  02030000
+//             DCB=(DSORG=PS,RECFM=FB,LRECL=0393,BLKSIZE=23187),        02040000
+//             SPACE=(TRK,(500,100),RLSE)                               02050000
+//SYSIN    DD  DUMMY                                                    02060000
+//SYSPRINT DD  SYSOUT=*                                                 02070000
+//*                                                                     02080000
+//**********************************************************************00530000
+//*  COPY EXVS100 AUDIT REPORT TO GDG                                  *02100000
+//**********************************************************************00530000
+//*                                                                     02080000
+//FDEX0070 EXEC  PGM=IEBGENER                                           02120000
+//SYSUT1   DD  DSN=FDEX.PROD.EXVS100.AUDIT.DATA,                        02130000
+//             DISP=SHR                                                 02140000
+//SYSUT2   DD  DSN=FDEX.PROD.EXVS100.AUDIT(+1),                         02150000
+//             DISP=(NEW,CATLG,CATLG),                                  02160000
+//             DCB=(RECFM=FBA,LRECL=133,BLKSIZE=23408,DSORG=PS),        02170000
+//             SPACE=(TRK,(100,100),RLSE)                               02180000
+//SYSIN    DD  DUMMY                                                    02190000
+//SYSPRINT DD  SYSOUT=*                                                 02200000
+//*                                                                     02210000
+//**********************************************************************00530000
+//*  COPY EXVS100 ERROR REPORT TO GDG                                  *02230000
+//**********************************************************************00530000
+//*                                                                     02080000
+//FDEX0080 EXEC  PGM=IEBGENER                                           02250000
+//SYSUT1   DD  DSN=FDEX.PROD.EXVS100.ERROR.DATA,                        02260000
+//             DISP=SHR                                                 02270000
+//SYSUT2   DD  DSN=FDEX.PROD.EXVS100.ERROR(+1),                         02280000
+//             DISP=(NEW,CATLG,CATLG),                                  02290000
+//             DCB=(RECFM=FBA,LRECL=133,BLKSIZE=23408,DSORG=PS),        02300000
+//             SPACE=(TRK,(100,100),RLSE)                               02310000
+//SYSIN    DD  DUMMY                                                    02320000
+//SYSPRINT DD  SYSOUT=*                                                 02330000
+//*                                                                     02340000
+//**********************************************************************00530000
+//*  ROUTE ERROR REPORT TO RMDS                                        *02490000
+//**********************************************************************00530000
+//*                                                                     02340000
+//FDEX0090 EXEC  PGM=IEBGENER                                           02510000
+//SYSPRINT DD  SYSOUT=*                                                 02520000
+//SYSUT1   DD  DSN=FDEX.PROD.EXVS100.ERROR(+1),                         02530000
+//             DISP=SHR                                                 02540000
+//SYSUT2   DD  SYSOUT=(O,,FDBJ),                                        02550000
+//             DCB=RECFM=FBA                                            02560000
+//SYSUDUMP DD  SYSOUT=*                                                 02570000
+//SYSOUT   DD  SYSOUT=*                                                 02580000
+//SYSIN    DD  DUMMY                                                    02590000
+//*                                                                     02600000
+//**********************************************************************00530000
+//*  EXECUTE EXVS020 -                                                 *02620000
+//*  THE FOLLOWING PROGRAM CREATES A FILE OF ONLY CHANGES              *02630000
+//*  BETWEEN THE CURRENT SORTED USOB TLR FILE AND THE PRIOR            *02640000
+//*  SORTED USOB TLR FILE.                                             *02650000
+//**********************************************************************00530000
+//*                                                                     02600000
+//FDEX0100 EXEC  PGM=EXVS020                                            02680000
+//TLRIN    DD  DSN=FDEX.PROD.EXVS020.UTLRSORT(+1),                      02690000
+//             DISP=SHR                                                 02700000
+//PTLRIN   DD  DSN=FDEX.PROD.EXVS020.UTLRSORT(0),                       02710000
+//             DISP=SHR                                                 02720000
+//TLROUT   DD  DSN=FDEX.PROD.EXVS020.UTLRCHGS.DATA,                     02730000
+//             DISP=(NEW,CATLG,DELETE),                                 02740000
+//             DCB=(DSORG=PS,LRECL=307,RECFM=FB,BLKSIZE=23332),         02750000
+//             SPACE=(TRK,(500,50),RLSE)                                02760000
+//AUDIT    DD  DSN=FDEX.PROD.EXVS020.AUDIT(+1),                         02770000
+//             DISP=(NEW,CATLG),                                        02780000
+//             DCB=(DSORG=PS,LRECL=133,RECFM=FBA,BLKSIZE=13300),        02790000
+//             SPACE=(TRK,(1,1),RLSE)                                   02800000
+//SYSIN    DD  DUMMY                                                    02810000
+//SYSOUT   DD  SYSOUT=*                                                 02820000
+//SYSUDUMP DD  SYSOUT=*                                                 02830000
+//SYSPRINT DD  SYSOUT=*                                                 02840000
+//*                                                                     02850000
+//**********************************************************************00530000
+//*  CREATES EMPTY ERROR AND AUDIT FILES FOR EXVS120                   *03000000
+//**********************************************************************00530000
+//*                                                                     02850000
+//FDEX0110 EXEC  PGM=IEBGENER                                           03020000
+//SYSUT1   DD  DUMMY                                                    03030000
+//SYSUT2   DD  DSN=FDEX.PROD.EXVS120.ERROR.DATA,                        03040000
+//             DISP=(NEW,CATLG,DELETE),                                 03050000
+//             DCB=(DSORG=PS,LRECL=133,BLKSIZE=23408,RECFM=FBA),        03060000
+//             SPACE=(TRK,(100,100),RLSE)                               03070000
+//SYSUT3   DD  DSN=FDEX.PROD.EXVS120.AUDIT.DATA,                        03080000
+//             DISP=(NEW,CATLG,DELETE),                                 03090000
+//             DCB=(DSORG=PS,LRECL=133,BLKSIZE=23408,RECFM=FBA),        03100000
+//             SPACE=(TRK,(100,100),RLSE)                               03110000
+//SYSIN    DD  DUMMY                                                    03120000
+//SYSPRINT DD  SYSOUT=*                                                 03130000
+//*                                                                     03140000
+//**********************************************************************00530000
+//*  EXECUTE EXVS120 TO UPDATE MEXA001MSTR WITH USOB TLR FILE          *03160000
+//**********************************************************************00530000
+//*                                                                     03180000
+//FDEX0120 EXEC  IMSBATCH,                                              03190000
+//             MBR=EXVS120,PSB=EXVS120,SID=2,SSM=DB22,                  03200000
+//             BMPXRST=,AGN=FDAEXVS1                                    03210000
+//STEPLIB  DD                                                           03220000
+//         DD                                                           03230000
+//         DD  DSN=FDPV.PANEXEC.PRODLIB,                                03240000
+//             DISP=SHR                                                 03250000
+//MDEXG100 DD  DSN=FDEX.PROD.EXVS020.UTLRCHGS.DATA,              *GSAM* 03260000
+//             DISP=SHR                                                 03270000
+//MDEXG102 DD  DSN=FDEX.PROD.EXVS120.ERROR.DATA,                 *GSAM* 03280000
+//             DISP=(OLD,KEEP,KEEP)                                     03290000
+//MDEXG101 DD  DSN=FDEX.PROD.EXVS120.AUDIT.DATA,                 *GSAM* 03300000
+//             DISP=(OLD,KEEP,KEEP)                                     03310000
+//XRSTFILE DD  DSN=FDEX.WW.PROD.XRST.EXVS120,                           01900000
+//             DISP=OLD                                                 01910000
+//PARMFILE DD  DUMMY                                                    03320000
+//SYSUDUMP DD  SYSOUT=*                                                 03330000
+//SYSOUT   DD  SYSOUT=*                                                 03340000
+//*                                                                     03350000
+//**********************************************************************00530000
+//*  COPY UTLRCHGS TO GDG                                              *03370000
+//**********************************************************************00530000
+//*                                                                     03350000
+//FDEX0130 EXEC  PGM=IEBGENER                                           03390000
+//SYSUT1   DD  DSN=FDEX.PROD.EXVS020.UTLRCHGS.DATA,                     03400000
+//             DISP=SHR                                                 03410000
+//SYSUT2   DD  DSN=FDEX.PROD.EXVS020.UTLRCHGS(+1),                      03420000
+//             DISP=(NEW,CATLG,CATLG),                                  03430000
+//             DCB=(DSORG=PS,LRECL=307,RECFM=FB,BLKSIZE=23332),         03440000
+//             SPACE=(TRK,(500,50),RLSE)                                03450000
+//SYSIN    DD  DUMMY                                                    03460000
+//SYSPRINT DD  SYSOUT=*                                                 03470000
+//*                                                                     03480000
+//**********************************************************************00530000
+//*  COPY AUDIT REPORT TO GDG                                          *03500000
+//**********************************************************************00530000
+//*                                                                     03480000
+//FDEX0140 EXEC  PGM=IEBGENER                                           03520000
+//SYSUT1   DD  DSN=FDEX.PROD.EXVS120.AUDIT.DATA,                        03530000
+//             DISP=SHR                                                 03540000
+//SYSUT2   DD  DSN=FDEX.PROD.EXVS120.AUDIT(+1),                         03550000
+//             DISP=(NEW,CATLG,CATLG),                                  03560000
+//             DCB=(DSORG=PS,RECFM=FBA,LRECL=133,BLKSIZE=23408),        03570000
+//             SPACE=(TRK,(100,100),RLSE)                               03580000
+//SYSIN    DD  DUMMY                                                    03590000
+//SYSPRINT DD  SYSOUT=*                                                 03600000
+//*                                                                     03610000
+//**********************************************************************00530000
+//*  COPY ERROR REPORT TO GDG                                          *03630000
+//**********************************************************************00530000
+//*                                                                     03610000
+//FDEX0150 EXEC  PGM=IEBGENER                                           03650000
+//SYSUT1   DD  DSN=FDEX.PROD.EXVS120.ERROR.DATA,                        03660000
+//             DISP=SHR                                                 03670000
+//SYSUT2   DD  DSN=FDEX.PROD.EXVS120.ERROR(+1),                         03680000
+//             DISP=(NEW,CATLG,CATLG),                                  03690000
+//             DCB=(DSORG=PS,RECFM=FBA,LRECL=133,BLKSIZE=23408),        03700000
+//             SPACE=(TRK,(100,100),RLSE)                               03710000
+//SYSIN    DD  DUMMY                                                    03720000
+//SYSPRINT DD  SYSOUT=*                                                 03730000
+//SYSUDUMP DD  SYSOUT=*                                                 03740000
+//SYSOUT   DD  SYSOUT=*                                                 03750000
+//*                                                                     03760000
+//**********************************************************************00530000
+//*  ROUTE AUDIT REPORT TO RMDS                                        *03780000
+//**********************************************************************00530000
+//*                                                                     03760000
+//FDEX0160 EXEC  PGM=IEBGENER                                           03800000
+//SYSPRINT DD  SYSOUT=*                                                 03810000
+//SYSUT1   DD  DSN=FDEX.PROD.EXVS120.AUDIT(+1),                         03820000
+//             DISP=SHR                                                 03830000
+//SYSUT2   DD  SYSOUT=(O,,FDBQ),                                        03840000
+//             DCB=RECFM=FBA                                            03850000
+//SYSUDUMP DD  SYSOUT=*                                                 03860000
+//SYSOUT   DD  SYSOUT=*                                                 03870000
+//SYSIN    DD  DUMMY                                                    03880000
+//*                                                                     03890000
+//**********************************************************************00530000
+//*  ROUTE ERROR REPORT TO RMDS                                        *03910000
+//**********************************************************************00530000
+//*                                                                     03890000
+//FDEX0170 EXEC  PGM=IEBGENER                                           03930000
+//SYSPRINT DD  SYSOUT=*                                                 03940000
+//SYSUT1   DD  DSN=FDEX.PROD.EXVS120.ERROR(+1),                         03950000
+//             DISP=SHR                                                 03960000
+//SYSUT2   DD  SYSOUT=(O,,FDBK),                                        03970000
+//             DCB=RECFM=FBA                                            03980000
+//SYSUDUMP DD  SYSOUT=*                                                 03990000
+//SYSOUT   DD  SYSOUT=*                                                 04000000
+//SYSIN    DD  DUMMY                                                    04010000
+//*                                                                     03350000
+//**********************************************************************00530000
+//*  COPY UNFORMATTED INPUT 1 FROM MEXW0010 TO GDG                     *03370000
+//**********************************************************************00530000
+//*                                                                     03350000
+//FDEX0180 EXEC  PGM=IEBGENER                                           03390000
+//SYSUT1   DD  DSN=FDOP.FRPFD040.OERP200.OBEXPORT.DATASQ,               03400000
+//             DISP=SHR                                                 03410000
+//SYSUT2   DD  DSN=FDEX.PROD.FRPFD040.OERP200.OBEXPORT(+1),             03420000
+//             DISP=(NEW,CATLG,DELETE),                                 03430000
+//             DCB=(DSORG=PS,RECFM=FB,LRECL=0393,BLKSIZE=23187),        03440000
+//             SPACE=(TRK,(500,100),RLSE)                               03450000
+//SYSIN    DD  DUMMY                                                    03460000
+//SYSPRINT DD  SYSOUT=*                                                 03470000
+//*                                                                     03350000
+//**********************************************************************00530000
+//*  COPY UNFORMATTED INPUT 2 FROM MEXW0010 TO GDG                     *03370000
+//**********************************************************************00530000
+//*                                                                     03350000
+//FDEX0190 EXEC  PGM=IEBGENER                                           03390000
+//SYSUT1   DD  DSN=FDOP.LRPLM040.OERP200.OBEXPORT.DATASQ,               03400000
+//             DISP=SHR                                                 03410000
+//SYSUT2   DD  DSN=FDEX.PROD.LRPLM040.OERP200.OBEXPORT(+1),             03420000
+//             DISP=(NEW,CATLG,DELETE),                                 03430000
+//             DCB=(DSORG=PS,RECFM=FB,LRECL=0393,BLKSIZE=23187),        03440000
+//             SPACE=(TRK,(500,100),RLSE)                               03450000
+//SYSIN    DD  DUMMY                                                    03460000
+//SYSPRINT DD  SYSOUT=*                                                 03470000
+//*                                                                     03350000
+//**********************************************************************00530000
+//*  COPY UNFORMATTED INPUT 1 FROM MEXW0020 TO GDG                     *03370000
+//**********************************************************************00530000
+//*                                                                     03350000
+//FDEX0200 EXEC  PGM=IEBGENER                                           03390000
+//SYSUT1   DD  DSN=FDOP.FRPFD040.OERP200.OTEXPORT.DATASQ,               03400000
+//             DISP=SHR                                                 03410000
+//SYSUT2   DD  DSN=FDEX.PROD.FRPFD040.OERP200.OTEXPORT(+1),             03420000
+//             DISP=(NEW,CATLG,DELETE),                                 03430000
+//             DCB=(DSORG=PS,RECFM=FB,LRECL=0307,BLKSIZE=23332),        03440000
+//             SPACE=(TRK,(500,100),RLSE)                               03450000
+//SYSIN    DD  DUMMY                                                    03460000
+//SYSPRINT DD  SYSOUT=*                                                 03470000
+//*                                                                     03350000
+//**********************************************************************00530000
+//*  COPY UNFORMATTED INPUT 2 FROM MEXW0020 TO GDG                     *03370000
+//**********************************************************************00530000
+//*                                                                     03350000
+//FDEX0210 EXEC  PGM=IEBGENER                                           03390000
+//SYSUT1   DD  DSN=FDOP.LRPLM040.OERP200.OTEXPORT.DATASQ,               03400000
+//             DISP=SHR                                                 03410000
+//SYSUT2   DD  DSN=FDEX.PROD.LRPLM040.OERP200.OTEXPORT(+1),             03420000
+//             DISP=(NEW,CATLG,DELETE),                                 03430000
+//             DCB=(DSORG=PS,RECFM=FB,LRECL=0307,BLKSIZE=23332),        03440000
+//             SPACE=(TRK,(500,100),RLSE)                               03450000
+//SYSIN    DD  DUMMY                                                    03460000
+//SYSPRINT DD  SYSOUT=*                                                 03470000
+//*                                                                     04020000
+//**********************************************************************00530000
+//*                   PREVENT DB2 DEADLOCKS                            *04460000
+//*  BY ALLOCATING A COMMON FILE AS (OLD,KEEP,KEEP), JOBS WITH         *04470000
+//*  DEADLOCK PROBLEMS WILL NOT EXECUTE AT THE SAME TIME.              *04480000
+//**********************************************************************00530000
+//*                                                                     04500000
+//FDEX0220 EXEC  PGM=IEFBR14                                            04510000
+//SYSPRINT DD  SYSOUT=*                                                 04520000
+//SYSIN    DD  DUMMY                                                    04530000
+//DUMMY    DD  DSN=FDEX.PROD.DEADLOCK,                                  04540000
+//             DISP=(MOD,CATLG,CATLG),                                  04550000
+//             DCB=(LRECL=80,RECFM=FB),                                 04550100
+//             SPACE=(TRK,(1,1),RLSE)                                   04550200
+//*                                                                     04560000
+//**********************************************************************00530000
+//*               FORCE LAST STEP'S RETURN CODE TO ZEROS               *04590000
+//**********************************************************************00530000
+//*                                                                     04620000
+//FDEXDUMY EXEC  PGM=IEFBR14                                            04630000
